@@ -65,14 +65,14 @@ describe Puppet::Parser::Scope do
             mod = Module.new
             Puppet::Parser::Functions.expects(:environment_module).with(env).returns mod
 
-            Puppet::Parser::Scope.new(:compiler => compiler).metaclass.ancestors.should be_include(mod)
+            Puppet::Parser::Scope.new(:compiler => compiler).singleton_class.ancestors.should be_include(mod)
         end
 
         it "should extend itself with the default Functions module if it has no environment" do
             mod = Module.new
             Puppet::Parser::Functions.expects(:environment_module).with(nil).returns mod
 
-            Puppet::Parser::Scope.new().metaclass.ancestors.should be_include(mod)
+            Puppet::Parser::Scope.new().singleton_class.ancestors.should be_include(mod)
         end
     end
 
