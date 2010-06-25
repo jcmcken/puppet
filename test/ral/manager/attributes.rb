@@ -94,9 +94,6 @@ class TestTypeAttributes < Test::Unit::TestCase
             assert(klass, "did not get class for %s" % name)
             obj = yield inst, klass
             assert_instance_of(klass, obj, "did not get object back")
-            assert_equal("value", inst.value(klass.name),
-                "value was not correct from value method")
-            assert_equal("value", obj.value, "value was not correct")
         end
     end
 
@@ -113,28 +110,27 @@ class TestTypeAttributes < Test::Unit::TestCase
             end
         end
 
-        # Now set each of them
+        # Now create each of them
         attr_check(type) do |inst, klass|
-            inst.newattr(klass.name, :value => "value")
+            inst.newattr(klass.name)
         end
 
         # Now try it passing the class in
         attr_check(type) do |inst, klass|
-            inst.newattr(klass, :value => "value")
+            inst.newattr(klass)
         end
 
-        # Lastly, make sure we can create and then set, separately
+        # Lastly, make sure we can set values to the new attributes
         attr_check(type) do |inst, klass|
             obj = inst.newattr(klass.name)
             assert_nothing_raised("Could not set value after creation") do
                 obj.value = "value"
             end
 
-            # Make sure we can't create a new param object
-            assert_raise(Puppet::Error,
-                "Did not throw an error when replacing attr") do
-                    inst.newattr(klass.name, :value => "yay")
-            end
+            # Make sure calling newattr again doesn't replace the value
+            againobj = inst.newattr(klass.name)
+            assert_equal(againobj, obj)
+            assert_equal(againobj.value, 'value')
             obj
         end
     end

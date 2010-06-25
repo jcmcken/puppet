@@ -433,7 +433,7 @@ class Type
         end
 
         property = self.newattr(name)
-        property.value = value
+        property.value = value if property
 
         nil
     end
