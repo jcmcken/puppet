@@ -634,7 +634,6 @@ end
 
 require 'puppettest/support/utils'
 describe "Puppet::Parser::Lexer in the old tests when lexing example files" do
-  extend PuppetTest
   extend PuppetTest::Support::Utils
   textfiles do |file|
     it "should correctly lex #{file}" do
