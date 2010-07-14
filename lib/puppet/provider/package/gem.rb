@@ -50,7 +50,7 @@ Puppet::Type.type(:package).provide :gem, :parent => Puppet::Provider::Package d
         when /^\*\*\*/, /^\s*$/, /^\s+/; return nil
         when /^(\S+)\s+\((.+)\)/
             name = $1
-            version = $2.split(/,\s*/)[0]
+            version = $2.split(/,\s*/)
             return {
                 :name => name,
                 :ensure => version

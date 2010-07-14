@@ -102,6 +102,8 @@ module Puppet
             # funky definitions of 'in sync'.
             def insync?(is)
                 @should ||= []
+                puts "look here"
+                p @should.class
 
                 @latest = nil unless defined? @latest
                 @lateststamp ||= (Time.now.to_i - 1000)
@@ -147,6 +149,10 @@ module Puppet
                         return true if is == :purged
                     when is
                         return true
+                    else
+                        if is.is_a? Array
+                          return true if is.include?(should)
+                        end
                     end
                 }
 
