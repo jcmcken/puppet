@@ -18,7 +18,7 @@ describe Puppet::Parser::Lexer do
     it "should increment the line count for every carriage return in the string" do
       @lexer.line = 10
       @lexer.string = "this\nis\natest'"
-      @lexer.slurpstring("'")
+      @lexer.slurpstring(["'"])
 
       @lexer.line.should == 12
     end
@@ -26,7 +26,7 @@ describe Puppet::Parser::Lexer do
     it "should not increment the line count for escapes in the string" do
       @lexer.line = 10
       @lexer.string = "this\\nis\\natest'"
-      @lexer.slurpstring("'")
+      @lexer.slurpstring(["'"])
 
       @lexer.line.should == 10
     end
@@ -426,7 +426,13 @@ describe Puppet::Parser::Lexer,"when lexing strings" do
     %q{a hardest "scanner \"test\""}                                => [[:NAME,"a"],[:NAME,"hardest"],[:STRING,'scanner "test"']],
     %Q{a hardestest "scanner \\"test\\"\n"}                         => [[:NAME,"a"],[:NAME,"hardestest"],[:STRING,%Q{scanner "test"\n}]],
     %q{function("call")}                                            => [[:NAME,"function"],[:LPAREN,"("],[:STRING,'call'],[:RPAREN,")"]],
-    %q["string with ${(3+5)/4} nested math."]                       => [[:DQPRE,"string with "],:LPAREN,[:NAME,"3"],:PLUS,[:NAME,"5"],:RPAREN,:DIV,[:NAME,"4"],[:DQPOST," nested math."]]
+    %q["string with ${(3+5)/4} nested math."]                       => [[:DQPRE,"string with "],:LPAREN,[:NAME,"3"],:PLUS,[:NAME,"5"],:RPAREN,:DIV,[:NAME,"4"],[:DQPOST," nested math."]],
+    %q["$$$$"]                                                      => [[:STRING,"$$$$"]],
+    %q["$variable"]                                                 => [[:DQPRE,""],[:VARIABLE,"variable"],[:DQPOST,""]],
+    %q["$var$other"]                                                => [[:DQPRE,""],[:VARIABLE,"var"],[:DQMID,""],[:VARIABLE,"other"],[:DQPOST,""]],
+    %q["foo$bar$"]                                                  => [[:DQPRE,"foo"],[:VARIABLE,"bar"],[:DQPOST,"$"]],
+    %q["foo$$bar"]                                                  => [[:DQPRE,"foo$"],[:VARIABLE,"bar"],[:DQPOST,""]],
+    %q[""]                                                          => [[:STRING,""]],
   }.each { |src,expected_result|
     it "should handle #{src} correctly" do
       tokens_scanned_from(src).should be_like(*expected_result)

@@ -521,9 +521,7 @@ class Puppet::Parser::Lexer
   def slurpstring(terminators)
     # we search for the next quote that isn't preceded by a
     # backslash; the caret is there to match empty strings
-    #(?:"|$(?=[:alnum:]))
     str = @scanner.scan_until(/([^\\]|^)(?:#{terminators.join '|'})/) or lex_error "Unclosed quote after '#{last}' in '#{rest}'"
-    puts str
     @line += str.count("\n") # literal carriage returns add to the line count.
     str.gsub!(/\\(.)/) {
       case ch=$1
@@ -542,9 +540,8 @@ class Puppet::Parser::Lexer
     [ str[0..-2],str[-1,1] ]
   end
 
-  # ((::)?\w+)+
   def tokenize_interpolated_string(token_type)
-    terminators = ['"','\$(?=(::)*[\w])']
+    terminators = ['"','\$(?=\{|(::)*[\w])']
     value,terminator = slurpstring(terminators)
     token_queue << [TOKENS[token_type[terminator]],value]
     while terminator == '$' and not @scanner.scan(/\{/)
