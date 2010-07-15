@@ -221,7 +221,7 @@ class Puppet::Parser::Lexer
   TOKENS.add_token :RETURN, "\n", :skip => true, :incr_line => true, :skip_text => true
 
   TOKENS.add_token :SQUOTE, "'" do |lexer, value|
-    [TOKENS[:STRING], lexer.slurpstring(value).first ]
+    [TOKENS[:STRING], lexer.slurpstring([value]).first ]
   end
 
   DQ_initial_token_types      = {'$' => :DQPRE,'"' => :STRING}
@@ -521,7 +521,9 @@ class Puppet::Parser::Lexer
   def slurpstring(terminators)
     # we search for the next quote that isn't preceded by a
     # backslash; the caret is there to match empty strings
-    str = @scanner.scan_until(/([^\\]|^)[#{terminators}]/) or lex_error "Unclosed quote after '#{last}' in '#{rest}'"
+    #(?:"|$(?=[:alnum:]))
+    str = @scanner.scan_until(/([^\\]|^)(?:#{terminators.join '|'})/) or lex_error "Unclosed quote after '#{last}' in '#{rest}'"
+    puts str
     @line += str.count("\n") # literal carriage returns add to the line count.
     str.gsub!(/\\(.)/) {
       case ch=$1
@@ -540,12 +542,14 @@ class Puppet::Parser::Lexer
     [ str[0..-2],str[-1,1] ]
   end
 
+  # ((::)?\w+)+
   def tokenize_interpolated_string(token_type)
-    value,terminator = slurpstring('"$')
+    terminators = ['"','\$(?=(::)*[\w])']
+    value,terminator = slurpstring(terminators)
     token_queue << [TOKENS[token_type[terminator]],value]
     while terminator == '$' and not @scanner.scan(/\{/)
       token_queue << [TOKENS[:VARIABLE],@scanner.scan(%r{(\w*::)*\w+|[0-9]})]
-      value,terminator = slurpstring('"$')
+      value,terminator = slurpstring(terminators)
       token_queue << [TOKENS[DQ_continuation_token_types[terminator]],value]
     end
     token_queue.shift
