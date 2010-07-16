@@ -40,13 +40,12 @@ class Puppet::Parser::Collector
       objects.each do |res|
         unless @collected.include?(res.ref)
 
-                newres = Puppet::Parser::Resource.new(
-        res.type, res.title,
+          newres = Puppet::Parser::Resource.new(
+            res.type, res.title,
             :parameters => overrides[:parameters],
             :file => overrides[:file],
             :line => overrides[:line],
             :source => overrides[:source],
-        
             :scope => overrides[:scope]
           )
 

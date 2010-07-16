@@ -477,57 +477,6 @@ describe Puppet::Parser::Scope do
     end
   end
 
-  def test_strinterp
-    # Make and evaluate our classes so the qualified lookups work
-    parser = mkparser
-    klass = parser.newclass("")
-    scope = mkscope(:parser => parser)
-    Puppet::Parser::Resource.new(:type => "class", :title => :main, :scope => scope, :source => mock('source')).evaluate
-
-    assert_nothing_raised {
-      scope.setvar("test","value")
-    }
-
-    scopes = {"" => scope}
-
-    %w{one one::two one::two::three}.each do |name|
-      klass = parser.newclass(name)
-      Puppet::Parser::Resource.new(:type => "class", :title => name, :scope => scope, :source => mock('source')).evaluate
-      scopes[name] = scope.class_scope(klass)
-      scopes[name].setvar("test", "value-#{name.sub(/.+::/,'')}")
-    end
-
-    assert_equal("value", scope.lookupvar("::test"), "did not look up qualified value correctly")
-    tests.each do |input, output|
-      assert_nothing_raised("Failed to scan #{input.inspect}") do
-        assert_equal(output, scope.strinterp(input), 'did not parserret %s correctly' % input.inspect)
-      end
-    end
-
-    logs = []
-    Puppet::Util::Log.close
-    Puppet::Util::Log.newdestination(logs)
-
-    # #523
-    %w{d f h l w z}.each do |l|
-      string = "\\#{l}"
-      assert_nothing_raised do
-
-              assert_equal(
-        string, scope.strinterp(string),
-        
-          'did not parserret %s correctly' % string)
-      end
-
-
-            assert(
-        logs.detect { |m| m.message =~ /Unrecognised escape/ },
-        
-        "Did not get warning about escape sequence with #{string}")
-      logs.clear
-    end
-  end
-
   describe "when setting ephemeral vars from matches" do
     before :each do
       @match = stub 'match', :is_a? => true
