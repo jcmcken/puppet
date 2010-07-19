@@ -10,20 +10,6 @@ class Puppet::Parser::AST
       @value
     end
 
-    # evaluate ourselves, and match
-    def evaluate_match(value, scope)
-      obj = self.safeevaluate(scope)
-
-      obj   = obj.downcase   if obj.respond_to?(:downcase)
-      value = value.downcase if value.respond_to?(:downcase)
-
-      obj   = Puppet::Parser::Scope.number?(obj)   || obj
-      value = Puppet::Parser::Scope.number?(value) || value
-
-      # "" == undef for case/selector/if
-      obj == value or (obj == "" and value == :undef)
-    end
-
     def match(value)
       @value == value
     end
@@ -31,6 +17,7 @@ class Puppet::Parser::AST
     def to_s
       @value.to_s unless @value.nil?
     end
+    include AST::EvaluateMatch
   end
 
   # The boolean class.  True or false.  Converts the string it receives

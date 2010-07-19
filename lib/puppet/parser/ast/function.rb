@@ -10,6 +10,8 @@ class Puppet::Parser::AST
 
     @settor = true
 
+    include AST::EvaluateMatch
+
     def evaluate(scope)
 
       # Make sure it's a defined function

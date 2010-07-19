@@ -8,6 +8,21 @@ require 'puppet/file_collection/lookup'
 # Handles things like file name, line #, and also does the initialization
 # for all of the parameters of all of the child objects.
 class Puppet::Parser::AST
+  module Puppet::Parser::AST::EvaluateMatch
+    # evaluate ourselves, and match
+    def evaluate_match(value, scope)
+      obj = self.safeevaluate(scope)
+
+      obj   = obj.downcase   if obj.respond_to?(:downcase)
+      value = value.downcase if value.respond_to?(:downcase)
+
+      obj   = Puppet::Parser::Scope.number?(obj)   || obj
+      value = Puppet::Parser::Scope.number?(value) || value
+
+      # "" == undef for case/selector/if
+      obj == value or (obj == "" and value == :undef)
+    end
+  end
   # Do this so I don't have to type the full path in all of the subclasses
   AST = Puppet::Parser::AST
 
