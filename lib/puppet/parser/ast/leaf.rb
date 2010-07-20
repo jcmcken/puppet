@@ -17,7 +17,6 @@ class Puppet::Parser::AST
     def to_s
       @value.to_s unless @value.nil?
     end
-    include AST::EvaluateMatch
   end
 
   # The boolean class.  True or false.  Converts the string it receives

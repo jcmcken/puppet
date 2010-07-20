@@ -40,12 +40,11 @@ describe Puppet::Parser::AST do
 
 end
 
-describe Puppet::Parser::AST::EvaluateMatch do
+describe 'AST Generic Child' do
   before :each do
     @value = stub 'value'
     class Evaluateable < Puppet::Parser::AST
       attr_accessor :value
-      include Puppet::Parser::AST::EvaluateMatch
       def safeevaluate(*options)
         return value
       end
