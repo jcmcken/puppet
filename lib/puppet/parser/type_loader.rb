@@ -33,12 +33,9 @@ class Puppet::Parser::TypeLoader
 
     # use a path relative to the file doing the importing
     if current_file
-      dir = current_file.sub(%r{[^/]+$},'').sub(/\/$/, '')
+      dir = File.dirname(current_file)
     else
-      dir = "."
-    end
-    if dir == ""
-      dir = "."
+      dir = Puppet[:manifestdir]
     end
 
     pat = file
