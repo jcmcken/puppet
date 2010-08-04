@@ -451,23 +451,3 @@ describe Puppet::Application::Master do
     end
   end
 end
-
-describe Puppet::Application::Master do
-  before :each do
-    @master = Puppet::Application[:master]
-    Puppet.settings.stubs(:use)
-    Puppet::SSL::CertificateAuthority.stubs(:instance)
-  end
-
-  describe "with the facts_terminus settings set to couch" do
-    it "should use couch for the facts terminus class" do
-      Puppet.settings[:facts_terminus] = 'couch'
-
-      @master.setup
-
-      Puppet[:facts_terminus].should == 'couch'
-      Puppet::Node::Facts.indirection.terminus_class.should == :couch
-    end
-
-  end
-end
