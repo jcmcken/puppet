@@ -17,12 +17,6 @@ describe Puppet::Network::HttpPool do
     Puppet::Network::HttpPool::HTTP_KEEP_ALIVE.should be_false
   end
 
-  it "should use the global SSL::Host instance to get its certificate information" do
-    host = mock 'host'
-    Puppet::SSL::Host.expects(:localhost).with.returns host
-    Puppet::Network::HttpPool.ssl_host.should equal(host)
-  end
-
   describe "when managing http instances" do
     def stub_settings(settings)
       settings.each do |param, value|

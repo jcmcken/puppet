@@ -3,28 +3,6 @@
 require File.dirname(__FILE__) + '/../../spec_helper'
 require 'puppet/indirector/rest'
 
-describe "a REST http call", :shared => true do
-  it "should accept a path" do
-    lambda { @search.send(@method, *@arguments) }.should_not raise_error(ArgumentError)
-  end
-
-  it "should require a path" do
-    lambda { @searcher.send(@method) }.should raise_error(ArgumentError)
-  end
-
-  it "should return the results of deserializing the response to the request" do
-    conn = mock 'connection'
-    conn.stubs(:put).returns @response
-    conn.stubs(:delete).returns @response
-    conn.stubs(:get).returns @response
-    Puppet::Network::HttpPool.stubs(:http_instance).returns conn
-
-    @searcher.expects(:deserialize).with(@response).returns "myobject"
-
-    @searcher.send(@method, *@arguments).should == 'myobject'
-  end
-end
-
 describe Puppet::Indirector::REST do
   before do
     Puppet::Indirector::Terminus.stubs(:register_terminus_class)
