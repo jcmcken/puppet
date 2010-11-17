@@ -17,13 +17,10 @@ class Puppet::Util::FileType
   # Create a new filetype.
   def self.newfiletype(name, &block)
     @filetypes ||= {}
-
-
-          klass = genclass(
-        name,
+      klass = genclass(
+      name,
       :block => block,
       :prefix => "FileType",
-        
       :hash => @filetypes
     )
 

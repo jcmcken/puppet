@@ -501,9 +501,9 @@ class TestCronParsedProvider < Test::Unit::TestCase
   def test_data
     setme
     puts @provider.filetype
-    @provider.stubs(:filetype).returns(Puppet::Util::FileType.filetype(:ram))
+    @provider.stubs(:filetype).returns(Puppet::Util::FileType.filetype(:flat))
     target = @provider.target_object(@me)
-    fakedata("data/providers/cron/examples").each do |file|
+    fakedata("data/providers/cron/examples").reverse.each do |file|
       puts "file #{file}"
       puts "target #{target}"
       text = File.read(file)
