@@ -501,13 +501,18 @@ class TestCronParsedProvider < Test::Unit::TestCase
   def test_data
     setme
     puts @provider.filetype
-    @provider.stubs(:filetype).returns(Puppet::Util::FileType.filetype(:flat))
+    @provider.stubs(:filetype).returns(Puppet::Util::FileType.filetype(:ram))
     target = @provider.target_object(@me)
     fakedata("data/providers/cron/examples").reverse.each do |file|
       puts "file #{file}"
-      puts "target #{target}"
       text = File.read(file)
       target.write(text)
+
+      puts 'before flush'
+      puts target.read
+      puts
+      puts
+
       assert_nothing_raised("Could not parse #{file}") do
         @provider.prefetch
       end
@@ -518,11 +523,13 @@ class TestCronParsedProvider < Test::Unit::TestCase
       # and zero the text
       target.write("")
 
-      result = nil
       assert_nothing_raised("Could not generate #{file}") do
         @provider.flush_target(@me)
       end
-
+      puts 'after flush'
+      puts target.read
+      puts
+      puts
       # Ignore whitespace differences, since those don't affect function.
       modtext = text.gsub(/[ \t]+/, " ")
       modtarget = target.read.gsub(/[ \t]+/, " ")
