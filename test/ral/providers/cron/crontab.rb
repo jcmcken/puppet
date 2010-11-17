@@ -509,6 +509,10 @@ class TestCronParsedProvider < Test::Unit::TestCase
         @provider.prefetch
       end
 
+      puts "test target the first time"
+      puts target.read
+      puts
+
       # mark the provider modified
       @provider.modified(@me)
 
@@ -531,7 +535,7 @@ class TestCronParsedProvider < Test::Unit::TestCase
       puts "target to test"
       puts target.read
 
-      assert_equal(modtext, target.read.gsub(/[ \t]+/, " "), "File was not rewritten the same")
+      assert_equal(modtext, modtarget, "File was not rewritten the same")
 
       @provider.clear
     end
