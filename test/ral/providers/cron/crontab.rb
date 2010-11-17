@@ -505,7 +505,6 @@ class TestCronParsedProvider < Test::Unit::TestCase
     fakedata("data/providers/cron/examples").each do |file|
       text = File.read(file)
       target.write(text)
-      assert_equal(modtext, modtarget, "File was not rewritten the same")
       assert_nothing_raised("Could not parse #{file}") do
         @provider.prefetch
       end
