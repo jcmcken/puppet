@@ -521,7 +521,7 @@ class TestCronParsedProvider < Test::Unit::TestCase
 
       result = nil
       assert_nothing_raised("Could not generate #{file}") do
-        #@provider.flush_target(@me)
+        @provider.flush_target(@me)
       end
 
       # Ignore whitespace differences, since those don't affect function.
