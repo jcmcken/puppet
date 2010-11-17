@@ -524,11 +524,11 @@ class TestCronParsedProvider < Test::Unit::TestCase
       modtext = text.gsub(/[ \t]+/, " ")
       modtarget = target.read.gsub(/[ \t]+/, " ")
 
-      puts "text"
+      puts "text to test"
       puts modtext
       puts
 
-      puts "target"
+      puts "target to test"
       puts modtarget
 
       assert_equal(modtext, modtarget, "File was not rewritten the same")
