@@ -529,7 +529,7 @@ class TestCronParsedProvider < Test::Unit::TestCase
       puts
 
       puts "target to test"
-      puts modtarget
+      puts target.read
 
       assert_equal(modtext, modtarget, "File was not rewritten the same")
 
