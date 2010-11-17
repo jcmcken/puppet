@@ -505,10 +505,20 @@ class TestCronParsedProvider < Test::Unit::TestCase
     fakedata("data/providers/cron/examples").each do |file|
       text = File.read(file)
       target.write(text)
+      puts "text"
+      puts text
+      puts
 
+      puts "target"
+      puts target.read
+
+      modtext = text.gsub(/[ \t]+/, " ")
+      modtarget = target.read.gsub(/[ \t]+/, " ")
+      assert_equal(modtext, modtarget, "File was not rewritten the same")
       assert_nothing_raised("Could not parse #{file}") do
         @provider.prefetch
       end
+
       # mark the provider modified
       @provider.modified(@me)
 
