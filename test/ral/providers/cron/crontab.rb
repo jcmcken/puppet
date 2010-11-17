@@ -247,7 +247,7 @@ class TestCronParsedProvider < Test::Unit::TestCase
 
               assert_equal(
         should, is,
-        
+
           "Did not parse #{file} correctly")
       end
 
@@ -292,7 +292,7 @@ class TestCronParsedProvider < Test::Unit::TestCase
 
           assert_equal(
         "# Puppet Name: #{name}\n30 * * * * date > /dev/null", str,
-        
+
       "Cron did not generate correctly")
   end
 
@@ -392,7 +392,7 @@ class TestCronParsedProvider < Test::Unit::TestCase
 
             assert_equal(
         str, target.read,
-        
+
         "Did not write correctly")
       assert_nothing_raised("Could not prefetch with #{str.inspect}") do
         @provider.prefetch
@@ -404,7 +404,7 @@ class TestCronParsedProvider < Test::Unit::TestCase
 
             assert_equal(
         str, target.read,
-        
+
         "Changed in read/write")
 
       @provider.clear
@@ -439,19 +439,19 @@ class TestCronParsedProvider < Test::Unit::TestCase
     matchers = [
 
             @type.new(
-                
+
         :name => "yaycron",
         :minute => [0, 30],
         :command => "date",
-        
+
         :user => @me
       ),
 
             @type.new(
-                
+
         :name => "youtest",
         :command => "yaytest",
-        
+
         :user => you
       )
     ]
@@ -459,20 +459,20 @@ class TestCronParsedProvider < Test::Unit::TestCase
     nonmatchers = [
 
             @type.new(
-                
+
         :name => "footest",
         :minute => [0, 30],
         :hour => 1,
         :command => "fooness",
-        
+
         :user => @me # wrong target
       ),
 
             @type.new(
-                
+
         :name => "funtest2",
         :command => "funtest",
-        
+
         :user => you # wrong target for this cron
       )
     ]
@@ -500,9 +500,12 @@ class TestCronParsedProvider < Test::Unit::TestCase
 
   def test_data
     setme
+    puts @provider.filetype
     @provider.stubs(:filetype).returns(Puppet::Util::FileType.filetype(:ram))
     target = @provider.target_object(@me)
     fakedata("data/providers/cron/examples").each do |file|
+      puts "file #{file}"
+      puts "target #{target}"
       text = File.read(file)
       target.write(text)
       assert_nothing_raised("Could not parse #{file}") do
@@ -552,7 +555,7 @@ class TestCronParsedProvider < Test::Unit::TestCase
 
               assert_equal(
         :freebsd_special, r[:record_type],
-        
+
           "Did not create lines as freebsd lines")
       end
       assert_nothing_raised("Could not flush with #{str.inspect}") do
@@ -562,7 +565,7 @@ class TestCronParsedProvider < Test::Unit::TestCase
 
             assert_equal(
         str, target.read,
-        
+
         "Changed in read/write")
 
       @provider.clear

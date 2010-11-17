@@ -52,7 +52,6 @@ class Puppet::Provider::ParsedFile < Puppet::Provider
   # necessary -- it's passed from the instance calling 'flush'.
   def self.flush(record)
     # Make sure this record is on the list to be flushed.
-    puts "record on disk? #{record[:on_disk]}"
     unless record[:on_disk]
       record[:on_disk] = true
       @records << record
