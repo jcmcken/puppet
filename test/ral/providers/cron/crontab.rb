@@ -522,7 +522,7 @@ class TestCronParsedProvider < Test::Unit::TestCase
 
       # Ignore whitespace differences, since those don't affect function.
       modtext = text.gsub(/[ \t]+/, " ")
-      modtarget = target.read.gsub(/[ \t]+/, " ")
+      #modtarget = target.read.gsub(/[ \t]+/, " ")
 
       puts "text to test"
       puts modtext
@@ -531,7 +531,7 @@ class TestCronParsedProvider < Test::Unit::TestCase
       puts "target to test"
       puts target.read
 
-      assert_equal(modtext, modtarget, "File was not rewritten the same")
+      assert_equal(modtext, target.read.gsub(/[ \t]+/, " "), "File was not rewritten the same")
 
       @provider.clear
     end
