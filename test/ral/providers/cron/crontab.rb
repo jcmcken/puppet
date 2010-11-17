@@ -513,7 +513,7 @@ class TestCronParsedProvider < Test::Unit::TestCase
       @provider.modified(@me)
 
       # and zero the text
-      target.write("")
+      #target.write("")
 
       result = nil
       assert_nothing_raised("Could not generate #{file}") do
