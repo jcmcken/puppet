@@ -33,10 +33,11 @@ module Puppet
     newparam(:protocol) do
       desc "The protocols the port uses. Valid values are *udp* and *tcp*.
         Most services have both protocols, but not all. If you want both
-        protocols you have to define two resources. You can define both
-        resources with the same title as long as the combination of
-        resourcetitle and protocol is uniq. Keep in mind that if another
-        resource requires Port['title'] it requires both resources"
+        protocols you have to define two resources. Remeber that you cannot
+        specify two resources with the same title but you can use a title
+        to set both, name and protocol if you use ':' as a seperator. So
+        port { 'telnet:tcp': ... } sets both name and protocol and you dont
+        have to specify them explicitly then"
 
       newvalues :tcp, :udp
 
