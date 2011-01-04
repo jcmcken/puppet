@@ -42,8 +42,8 @@ end
 desc "Create the tarball and the gem - use when releasing"
 task :puppetpackages => [:create_gem, :package]
 
-Spec::Rake::SpecTask.new do |t|
-    t.spec_opts = ['--format','s', '--color']
+RSpec::Core::RakeTask.new do |t|
+    t.rspec_opts = ['--format','s', '--color']
     t.pattern ='spec/{unit,integration}/**/*.rb'
     t.fail_on_error = false
 end
