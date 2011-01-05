@@ -6,13 +6,22 @@ module Puppet
 
     def self.title_patterns
       [
-        # we just have one titlepattern "name:protocol"
+        # we have two titlepatterns "name" and "name:protocol". We won't use
+        # one pattern (that will eventually set :protocol to nil) because we
+        # want to use a default value for :protocol. And that does only work
+        # if :protocol is not put in the parameter hash while initialising
         [
-          /^(.*?)(?::(tcp|udp))?$/, # Regex to parse title
+          /^(.*?):(tcp|udp)$/, # Set name and protocol
           [
             # We don't need a lot of postparsing
             [ :name, lambda{|x| x} ],
-            [ :protocol, lambda{ |x| x.intern unless x.nil? } ],
+            [ :protocol, lambda{ |x| x.intern unless x.nil? } ]
+          ]
+        ],
+        [
+          /^(.*)$/,
+          [
+            [ :name, lambda{|x| x} ]
           ]
         ]
       ]

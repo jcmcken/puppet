@@ -25,7 +25,14 @@ describe port do
     regex = @class.title_patterns[0][0]
     regex.match("telnet:tcp").captures.should == ['telnet','tcp' ]
     regex.match("telnet:udp").captures.should == ['telnet','udp' ]
-    regex.match("telnet:baz").captures.should == ['telnet:baz',nil ]
+    regex.match("telnet:baz").should == nil
+  end
+
+  it "should have a second title pattern that will set only name" do
+    regex = @class.title_patterns[1][0]
+    regex.match("telnet:tcp").captures.should == ['telnet:tcp' ]
+    regex.match("telnet:udp").captures.should == ['telnet:udp' ]
+    regex.match("telnet:baz").captures.should == ['telnet:baz' ]
   end
 
   it "should have two key_attributes" do
