@@ -12,19 +12,7 @@ class Puppet::Application::Queue < Puppet::Application
     @daemon.argv = ARGV.dup
     Puppet::Util::Log.newdestination(:console)
 
-    # Do an initial trap, so that cancels don't get a stack trace.
-
-    # This exits with exit code 1
-    trap(:INT) do
-      $stderr.puts "Caught SIGINT; shutting down"
-      exit(1)
-    end
-
-    # This is a normal shutdown, so code 0
-    trap(:TERM) do
-      $stderr.puts "Caught SIGTERM; shutting down"
-      exit(0)
-    end
+    trap_int
 
     {
       :verbose => false,

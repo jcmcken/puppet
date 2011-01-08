@@ -143,10 +143,7 @@ class Puppet::Application::Apply < Puppet::Application
     client = nil
     server = nil
 
-    trap(:INT) do
-      $stderr.puts "Exiting"
-      exit(1)
-    end
+    trap_int
 
     if options[:debug]
       Puppet::Util::Log.level = :debug

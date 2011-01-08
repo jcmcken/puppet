@@ -150,12 +150,7 @@ class Puppet::Application::Kick < Puppet::Application
   end
 
   def preinit
-    [:INT, :TERM].each do |signal|
-      trap(signal) do
-        $stderr.puts "Cancelling"
-        exit(1)
-      end
-    end
+    trap_int
     options[:parallel] = 1
     options[:verbose] = true
     options[:fqdn] = true
@@ -193,19 +188,7 @@ class Puppet::Application::Kick < Puppet::Application
 
     @children = {}
 
-    # If we get a signal, then kill all of our children and get out.
-    [:INT, :TERM].each do |signal|
-      trap(signal) do
-        Puppet.notice "Caught #{signal}; shutting down"
-        @children.each do |pid, host|
-          Process.kill("INT", pid)
-        end
-
-        waitall
-
-        exit(1)
-      end
-    end
+    trap_int
 
   end
 

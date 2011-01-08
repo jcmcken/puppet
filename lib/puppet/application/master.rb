@@ -26,10 +26,7 @@ class Puppet::Application::Master < Puppet::Application
   end
 
   def preinit
-    trap(:INT) do
-      $stderr.puts "Cancelling startup"
-      exit(0)
-    end
+    trap_int
 
     # Create this first-off, so we have ARGV
     require 'puppet/daemon'

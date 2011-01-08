@@ -27,10 +27,7 @@ class Puppet::Application::Inspect < Puppet::Application
     Puppet::Util::Log.newdestination(@report)
     Puppet::Util::Log.newdestination(:console) unless options[:logset]
 
-    trap(:INT) do
-      $stderr.puts "Exiting"
-      exit(1)
-    end
+    trap_int
 
     if options[:debug]
       Puppet::Util::Log.level = :debug

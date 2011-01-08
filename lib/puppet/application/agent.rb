@@ -8,12 +8,6 @@ class Puppet::Application::Agent < Puppet::Application
   attr_accessor :args, :agent, :daemon, :host
 
   def preinit
-    # Do an initial trap, so that cancels don't get a stack trace.
-    trap(:INT) do
-      $stderr.puts "Cancelling startup"
-      exit(0)
-    end
-
     {
       :waitforcert => nil,
       :detailed_exitcodes => false,

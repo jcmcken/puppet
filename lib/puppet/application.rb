@@ -396,5 +396,12 @@ class Application
       $stderr.puts "Could not #{message}: #{detail}"
       exit(code)
   end
+
+  def trap_int(msg = "Cancelling Startup")
+    trap(:INT) do
+      $stderr.puts msg
+      exit(0)
+    end
+  end
 end
 end

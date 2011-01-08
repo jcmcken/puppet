@@ -70,6 +70,14 @@ RSpec.configure do |config|
     Puppet[:confdir] = "/dev/null"
     Puppet[:vardir] = "/dev/null"
 
+    # Stubbing trap_int with mocha causes lots of
+    module Puppet
+      class Application
+        def trap_int(msg = "Cancelling Startup")
+        end
+      end
+    end
+
     # Avoid opening ports to the outside world
     Puppet.settings[:bindaddress] = "127.0.0.1"
 

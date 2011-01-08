@@ -52,10 +52,7 @@ class Puppet::Application::Filebucket < Puppet::Application
     @client = nil
     @server = nil
 
-    trap(:INT) do
-      $stderr.puts "Cancelling"
-      exit(1)
-    end
+    trap_int
 
     if options[:debug]
       Puppet::Log.level = :debug
