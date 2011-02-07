@@ -173,6 +173,7 @@ class Puppet::Configurer
   def send_report(report, trans)
     report.finalize_report if trans
     puts report.summary if Puppet[:summarize]
+    report = YAML.load(File.open('/Users/matthewrobinson/Downloads/pm2svadm02v.cmi2.nyx.com/201102041720_265rc1.yaml'))
     report.save if Puppet[:report]
   rescue => detail
     puts detail.backtrace if Puppet[:trace]
