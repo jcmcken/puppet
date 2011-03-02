@@ -163,11 +163,12 @@ module Puppet
       Puppet.settings[:name] == "apply"
     end
 
-    # the content is munged so if it's a checksum source_or_content is nil here
+    # the content is munged so if it's a checksum source_or_content is nil 
+    # unless the checksum indirectly comes from source
     def each_chunk_from(source_or_content)
       if source_or_content.is_a?(String)
         yield source_or_content
-      elsif content_is_really_a_checksum?
+      elsif content_is_really_a_checksum? && source_or_content.nil?
         yield read_file_from_filebucket
       elsif source_or_content.nil?
         yield ''
