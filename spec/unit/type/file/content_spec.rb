@@ -380,12 +380,19 @@ describe content do
         @content.each_chunk_from(nil) { |chunk| chunk.should == '' }
       end
 
+      # you might do this if you were just auditing
       it "when no content, source, but ensure file" do
         @resource[:ensure] = :file
         @content.each_chunk_from(nil) { |chunk| chunk.should == '' }
       end
 
-      it "when no content or source" do
+      it "when source_or_content is nil and content not a checksum" do
+        @content.each_chunk_from(nil) { |chunk| chunk.should == '' }
+      end
+
+      # the content is munged so that if it's a checksum nil gets passed in
+      it "when content is a checksum it should try to read from filebucket" do
+        @content.should = "{md5}123abcd"
         @content.expects(:read_file_from_filebucket).once.returns('im_a_filebucket')
         @content.each_chunk_from(nil) { |chunk| chunk.should == 'im_a_filebucket' }
       end
