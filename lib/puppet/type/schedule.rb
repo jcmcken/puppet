@@ -304,23 +304,30 @@ module Puppet
 
     def self.mkdefaultschedules
       result = []
-      Puppet.debug "Creating default schedules"
-
-            result << self.new(
-
-        :name => "puppet",
-        :period => :hourly,
-
-        :repeat => "2"
-      )
-
-      # And then one for every period
-      @parameters.find { |p| p.name == :period }.value_collection.values.each { |value|
-
-              result << self.new(
-          :name => value.to_s,
-          :period => value
+      Puppet.debug("Creating default schedules") {
+        result << self.new(
+          :name   => "puppet",
+          :period => :hourly,
+          :repeat => "2"
         )
+
+        Puppet.debug("Inside the indent")
+
+        Puppet.debug("Nested inside the indent") { 
+          sleep 2 
+          Puppet.debug "Doubly nested"
+          Puppet.debug("Wrap another level") {
+            sleep 1
+            Puppet.debug "Triply nested"
+          }
+        }
+        # And then one for every period
+        @parameters.find { |p| p.name == :period }.value_collection.values.each { |value|
+          result << self.new(
+            :name   => value.to_s,
+            :period => value
+          )
+        }
       }
 
       result

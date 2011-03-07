@@ -79,7 +79,6 @@ end
 
 Puppet::Util::Log.newdesttype :console do
 
-
   RED     = {:console => "[0;31m", :html => "FFA0A0"}
   GREEN   = {:console => "[0;32m", :html => "00CD00"}
   YELLOW  = {:console => "[0;33m", :html => "FFFF60"}
