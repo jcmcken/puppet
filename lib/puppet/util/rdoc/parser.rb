@@ -45,6 +45,7 @@ class Parser
         end
       end
     end
+
     scan_top_level(@top_level)
     @top_level
   end
@@ -342,6 +343,7 @@ class Parser
   # that contains the documentation
   def parse_elements(container)
     Puppet.debug "rdoc: scanning manifest"
+
     @known_resource_types.hostclasses.values.sort { |a,b| a.name <=> b.name }.each do |klass|
       name = klass.name
       if klass.file == @input_file_name
