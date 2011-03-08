@@ -32,7 +32,8 @@ class Puppet::Application::Apply < Puppet::Application
     elsif Puppet[:parseonly]
       parseonly
     else
-      main
+      report = Puppet.debug("main") { main }
+      exit( options[:detailed_exitcodes] ? report.exit_status : 0 )
     end
   end
 
@@ -84,48 +85,45 @@ class Puppet::Application::Apply < Puppet::Application
       Puppet[:manifest] = manifest
     end
 
-    # Collect our facts.
-    unless facts = Puppet::Node::Facts.find(Puppet[:certname])
+    unless facts = Puppet.debug("Collect our facts") { Puppet::Node::Facts.find(Puppet[:certname]) }
       raise "Could not find facts for #{Puppet[:certname]}"
     end
 
-    # Find our Node
-    unless node = Puppet::Node.find(Puppet[:certname])
+    unless node = Puppet.debug("Find our Node") { Puppet::Node.find(Puppet[:certname]) }
       raise "Could not find node #{Puppet[:certname]}"
     end
 
-    # Merge in the facts.
-    node.merge(facts.values)
+    Puppet.debug("Merge in the facts") { node.merge(facts.values) }
 
-    # Allow users to load the classes that puppet agent creates.
-    if options[:loadclasses]
-      file = Puppet[:classfile]
-      if FileTest.exists?(file)
-        unless FileTest.readable?(file)
-          $stderr.puts "#{file} is not readable"
-          exit(63)
+    Puppet.debug("Allow users to load the classes that puppet agent creates") do
+      if options[:loadclasses]
+        file = Puppet[:classfile]
+        if FileTest.exists?(file)
+          unless FileTest.readable?(file)
+            $stderr.puts "#{file} is not readable"
+            exit(63)
+          end
+          node.classes = File.read(file).split(/[\s\n]+/)
         end
-        node.classes = File.read(file).split(/[\s\n]+/)
       end
     end
 
     begin
-      # Compile our catalog
       starttime = Time.now
-      catalog = Puppet::Resource::Catalog.find(node.name, :use_node => node)
+      catalog = Puppet.debug("compiling catalog") do
+        Puppet::Resource::Catalog.find(node.name, :use_node => node)
+      end
 
-      # Translate it to a RAL catalog
-      catalog = catalog.to_ral
-
-      catalog.finalize
+      Puppet.debug("translate it to a RAL catalog") { catalog = catalog.to_ral }
+      Puppet.debug("finalizing") { catalog.finalize }
 
       catalog.retrieval_duration = Time.now - starttime
 
       require 'puppet/configurer'
       configurer = Puppet::Configurer.new
-      report = configurer.run(:skip_plugin_download => true, :catalog => catalog)
-
-      exit( options[:detailed_exitcodes] ? report.exit_status : 0 )
+      return Puppet.debug("running configurer") do
+        configurer.run(:skip_plugin_download => true, :catalog => catalog)
+      end
     rescue => detail
       puts detail.backtrace if Puppet[:trace]
       $stderr.puts detail.message

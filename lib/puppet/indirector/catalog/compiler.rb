@@ -31,7 +31,7 @@ class Puppet::Resource::Catalog::Compiler < Puppet::Indirector::Code
 
     node = node_from_request(request)
 
-    if catalog = compile(node)
+    if catalog = Puppet.debug("compiling catalog") { compile(node) }
       return catalog
     else
       # This shouldn't actually happen; we should either return

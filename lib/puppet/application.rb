@@ -297,10 +297,10 @@ class Application
 
   # This is the main application entry point
   def run
-    exit_on_fail("initialize") { preinit }
-    exit_on_fail("parse options") { parse_options }
-    exit_on_fail("parse configuration file") { Puppet.settings.parse } if should_parse_config?
-    exit_on_fail("prepare for execution") { setup }
+    Puppet.debug("preinit")             { exit_on_fail("initialize") { preinit } }
+    Puppet.debug("parse options")       { exit_on_fail("parse options") { parse_options } }
+    Puppet.debug("parse configuration") { exit_on_fail("parse configuration file") { Puppet.settings.parse } } if should_parse_config?
+    Puppet.debug("setup")               { exit_on_fail("prepare for execution") { setup } }
     exit_on_fail("run") { run_command }
   end
 

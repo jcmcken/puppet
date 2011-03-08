@@ -129,10 +129,11 @@ Puppet::Util::Log.newdesttype :console do
   end
 
   def handle(msg)
+    level_str = msg.level.to_s.ljust(Puppet::Util::Log.levels.max.to_s.length)
     if msg.source == "Puppet"
-      puts colorize(msg.level, "#{msg.level}: #{msg}")
+      puts colorize(msg.level, "#{level_str}: #{msg}")
     else
-      puts colorize(msg.level, "#{msg.level}: #{msg.source}: #{msg}")
+      puts colorize(msg.level, "#{level_str}: #{msg}: #{msg.source}")
     end
   end
 end

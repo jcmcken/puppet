@@ -59,17 +59,20 @@ module Puppet::Network::HTTP::Handler
     @server = server
   end
 
-  # handle an HTTP request
   def process(request, response)
-    indirection_request = uri2indirection(http_method(request), path(request), params(request))
+    Puppet.debug("handle an HTTP request #{request.path}") do
+      begin
+        indirection_request = uri2indirection(http_method(request), path(request), params(request))
 
-    check_authorization(indirection_request)
+        check_authorization(indirection_request)
 
-    send("do_#{indirection_request.method}", indirection_request, request, response)
-  rescue SystemExit,NoMemoryError
-    raise
-  rescue Exception => e
-    return do_exception(response, e)
+        send("do_#{indirection_request.method}", indirection_request, request, response)
+      rescue SystemExit,NoMemoryError
+        raise
+      rescue Exception => e
+        return do_exception(response, e)
+      end
+    end
   end
 
   # Set the response up, with the body and status.

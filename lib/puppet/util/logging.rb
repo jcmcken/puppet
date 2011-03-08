@@ -3,7 +3,7 @@ require 'puppet/util/log'
 
 module Puppet::Util::Logging
 
-  @@indent_level = 0
+  @@indent_text = ''
   def send_log(level, message)
     Puppet::Util::Log.create({:level => level, :source => log_source, :message => message}.merge(log_metadata))
   end
@@ -13,27 +13,28 @@ module Puppet::Util::Logging
     next if level.to_s == 'debug'
     define_method(level) do |args|
       args = args.join(" ") if args.is_a?(Array)
-      send_log(level, args)
+      send_log(level, @@indent_text + args)
     end
   end
 
   def debug(message)
     raise "should only ever be string" if message.is_a?(Array)
-    indent_text = @@indent_level > 0 ? '| ' + "  " * @@indent_level : ''
     if block_given?
       time_started = Time.now
-      msg = indent_text + time_started.strftime('%Y-%m-%d %H:%M:%S %z') + " Start " + message
+      msg = @@indent_text + "Start (#{time_started.strftime('%H:%M:%S')}) " + message
       send_log(:debug, msg)
 
-      indent_text += '| '
-      @@indent_level += 1
-      yield
-      @@indent_level -= 1
-      indent_text = indent_text.slice(0..-3)
+      @@indent_text += '|   '
+      return_value = yield
+      @@indent_text = @@indent_text.slice(0..-5)
 
-      send_log(:debug, indent_text + Time.now.to_s + " Finished (Time elapsed #{Time.now - time_started}) " + message)
+      elapsed = Time.now - time_started
+      end_time = elapsed > 1 ? Time.now.strftime('%H:%M:%S') + ' ' : ''
+      timing_info = "Finished (#{end_time}Time elapsed #{elapsed}) "
+      send_log(:debug, @@indent_text + timing_info + message)
+      return return_value
     else
-      send_log(:debug, indent_text + message)
+      send_log(:debug, @@indent_text + message)
     end
   end
 
