@@ -633,7 +633,8 @@ if @config.include?(:run_mode)
         if transaction.any_failed?
           report = transaction.report
           failures = report.logs.find_all { |log| log.level == :err }
-          raise "Got #{failures.length} failure(s) while initializing: #{failures.collect { |l| l.to_s }.join("; ")}"
+          collected_failures = failures.collect { |l| l.to_s }.join("; ")
+          raise "Got #{failures.length} failure(s) while initializing: #{collected_failures}"
         end
       end
 
