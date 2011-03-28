@@ -17,11 +17,14 @@ module Puppet::Util::RDoc
 
       r = RDoc::RDoc.new
 
-
-      RDoc::RDoc::GENERATORS["puppet"] = RDoc::RDoc::Generator.new(
-          "puppet/util/rdoc/generators/puppet_generator.rb",
-          "PuppetGenerator".intern,
-          "puppet")
+      if ::RUBY_VERSION =~ /1.9/
+        require "puppet/util/rdoc/generators/puppet_generator"
+      else
+        RDoc::RDoc::GENERATORS["puppet"] = RDoc::RDoc::Generator.new(
+            "puppet/util/rdoc/generators/puppet_generator.rb",
+            "PuppetGenerator".intern,
+            "puppet")
+      end
 
       # specify our own format & where to output
       options = [ "--fmt", "puppet",

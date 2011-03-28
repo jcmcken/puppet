@@ -1,4 +1,8 @@
-require 'rdoc/generators/html_generator'
+if ::RUBY_VERSION =~ /1.9/
+  require 'rdoc/generator/html'
+else
+  require 'rdoc/generators/html_generator'
+end
 require 'puppet/util/rdoc/code_objects'
 require 'digest/md5'
 
@@ -51,6 +55,7 @@ module Generators
 
   # This is a specialized HTMLGenerator tailored to Puppet manifests
   class PuppetGenerator < HTMLGenerator
+    RDoc::RDoc.add_generator(self) if ::RUBY_VERSION =~ /1.9/
 
     def PuppetGenerator.for(options)
       AllReferences::reset
