@@ -28,7 +28,7 @@ class Puppet::Transaction::Event
   end
 
   def resource=(res)
-    if res.respond_to?(:[]) and !res.is_a? String and level = res[:loglevel]
+    if res.respond_to?(:[]) and !res.is_a? String and !res.is_a? Symbol and level = res[:loglevel]
       @default_log_level = level
     end
     @resource = res.to_s
