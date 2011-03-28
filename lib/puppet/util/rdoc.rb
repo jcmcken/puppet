@@ -17,6 +17,7 @@ module Puppet::Util::RDoc
 
       r = RDoc::RDoc.new
 
+
       RDoc::RDoc::GENERATORS["puppet"] = RDoc::RDoc::Generator.new(
           "puppet/util/rdoc/generators/puppet_generator.rb",
           "PuppetGenerator".intern,
