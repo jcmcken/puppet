@@ -37,6 +37,28 @@ describe "Puppet::Indirector::CertificateStatus::File" do
     Puppet::SSL::Host.indirection.name.should == :certificate_status
   end
 
+  describe "when finding" do
+    it "should return the Puppet::SSL::Host when a CSR exists for the host" do
+      pending "Not working, and we can't figure out why."
+      @host = Puppet::SSL::Host.new("foo")
+      Puppet.settings.use(:main)
+
+      @host.generate_key
+
+      csr = Puppet::SSL::CertificateRequest.new(@host.name)
+      csr.generate(@host.key.content)
+      @host.certificate_request = csr
+      @request = Puppet::Indirector::Request.new(:certificate_status, :find, "foo", @host)
+      @terminus.find(@request).should == nil
+    end
+    it "should return the Puppet::SSL::Host when a public key exist for the host"
+    it "should return nil when neither a CSR nor public key exist for the host" do
+      @host = Puppet::SSL::Host.new("foo")
+      @request = Puppet::Indirector::Request.new(:certificate_status, :find, "foo", @host)
+      @terminus.find(@request).should == nil
+    end
+  end
+
   describe "when saving" do
     before do
       @host = Puppet::SSL::Host.new("mysigner")
