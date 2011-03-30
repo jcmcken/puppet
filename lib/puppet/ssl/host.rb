@@ -262,8 +262,7 @@ class Puppet::SSL::Host
 
   def to_pson(*args)
     pson_hash = {
-      :name  => name,
-      :state => 'invalid'
+      :name  => name
     }
 
     if certificate_request

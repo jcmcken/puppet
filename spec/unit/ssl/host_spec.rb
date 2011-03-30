@@ -3,6 +3,8 @@
 require File.expand_path(File.dirname(__FILE__) + '/../../spec_helper')
 
 require 'puppet/ssl/host'
+require 'puppet/sslcertificates'
+require 'puppet/sslcertificates/ca'
 
 describe Puppet::SSL::Host do
   before do
@@ -749,4 +751,86 @@ describe Puppet::SSL::Host do
     end
   end
 
+  describe "when converting to PSON" do
+    include PuppetSpec::Files
+
+    before do
+      Puppet[:vardir] = tmpdir("ssl_test_vardir")
+      Puppet[:ssldir] = tmpdir("ssl_test_ssldir")
+      Puppet::SSLCertificates::CA.new.mkrootcert
+
+      @ca=Puppet::SSL::CertificateAuthority.new
+    end
+
+    it "should be able to identify a host with a pending certificate request" do
+      host = Puppet::SSL::Host.new("bazinga")
+      host.generate_certificate_request
+      pson_string = {
+        :fingerprint => host.certificate_request.fingerprint,
+        :state       => 'requested',
+        :name        => host.name
+      }.to_pson
+
+      Puppet::SSL::Host.new(host.name).to_pson.should == pson_string
+    end
+
+    it "should be able to identify a host with a signed certificate" do
+      host = Puppet::SSL::Host.new("bazinga")
+      host.generate_certificate_request
+      @ca.sign(host.name)
+      pson_string = {
+        :fingerprint => Puppet::SSL::Certificate.indirection.find(host.name).fingerprint,
+        :state       => 'signed',
+        :name        => host.name
+      }.to_pson
+
+      Puppet::SSL::Host.new(host.name).to_pson.should == pson_string
+    end
+
+    it "should be able to identify a host with a revoked certificate" do
+      host = Puppet::SSL::Host.new("bazinga")
+      host.generate_certificate_request
+      @ca.sign(host.name)
+      @ca.revoke(host.name)
+      pson_string = {
+        :fingerprint => Puppet::SSL::Certificate.indirection.find(host.name).fingerprint,
+        :state       => 'revoked',
+        :name        => host.name,
+        :verification_message => 'certificate revoked'
+      }.to_pson
+
+      Puppet::SSL::Host.new(host.name).to_pson.should == pson_string
+    end
+
+    it "should be able to identify a host with an invalid certificate" do
+      pending "Dunno yet how to actually test this with our CA interactions."
+      host = Puppet::SSL::Host.new("bazinga")
+      host.generate_certificate_request
+      @ca.sign(host.name)
+      #require 'ruby-debug';debugger;1
+
+      # Good key:
+      #
+      # -----BEGIN RSA PUBLIC KEY-----
+      # MIGJAoGBAM+4wA0M8h6/PCGQ2dSv4h7lEDilTdOKoSRDXjZQMb8cGfaXw8GfX0EH
+      # aPcJARTLjiZTcEWDTIUgMVQQAfZvdkZ8Lpm4815A46uFi2wKnV0435VpcwA7eQ3a
+      # WtsygsQNTXX1pmKf5FW/MyOrNlaW+NLk+h+k4n9RqEiQbFZId34JAgMBAAE=
+      # -----END RSA PUBLIC KEY-----
+
+      certfile = Puppet::SSLCertificates::CA.new.host2certfile(host.name)
+      File.open(certfile, 'w') {|f| f.write('-----BEGIN RSA PUBLIC KEY-----
+MIGJAoGBAM+4wA0M8h6/PCGQ2dSv4h7lEDilTdOKoSRDXjZQMb8cGfaXw8GfX0EH
+aPcJARTLjiZTcEWDTIUgMVQQAfZvdkZ8Lpm4815A46uFi2wKnV0435VpcwA7eQ3a
+WtsygsQNTXX1pmKf5FW/MyOrNlaW+NLk+h+k4n9RqEiQbFZId34JAgMBAAE=
+-----END RSA PUBLIC KEY-----
+') }
+      pson_string = {
+        :fingerprint => Puppet::SSL::Certificate.indirection.find(host.name).fingerprint,
+        :state       => 'signed',
+        :name        => host.name
+      }.to_pson
+
+      Puppet::SSL::Host.new(host.name).to_pson.should == pson_string
+    end
+  end
 end
