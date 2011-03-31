@@ -24,10 +24,8 @@ class Puppet::SSL::Host
 
   attr_writer :key, :certificate, :certificate_request
 
-  attr_accessor :fingerprint, :message
-  attr_reader :state
-
-  CERT_STATES = %w{requested signed invoked invalid}
+  # This accessor is used in instances for indirector requests to hold desired state
+  attr_accessor :desired_state
 
   class << self
     include Puppet::Util::Cacher
@@ -126,11 +124,8 @@ class Puppet::SSL::Host
       instance.certificate_request = Puppet::SSL::CertificateRequest.from_s(
         pson["certificate_request"])
     end
-    instance.fingerprint = pson["fingerprint"]
-    instance.message = pson["message"]
-    begin
-      instance.state = pson["state"]
-    rescue ArgumentError
+    if pson["state"]
+      instance.desired_state = pson["state"]
     end
     instance
   end
@@ -250,14 +245,6 @@ class Puppet::SSL::Host
       return @ssl_store
     end
     @ssl_store
-  end
-
-  def state=(value)
-    unless CERT_STATES.include?(value)
-      string = CERT_STATES.join(", ")
-      raise ArgumentError, "Invalid certificate state '#{value}'; must be one of #{string}"
-    end
-    @state = value
   end
 
   def to_pson(*args)

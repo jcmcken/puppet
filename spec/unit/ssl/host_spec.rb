@@ -743,7 +743,7 @@ describe Puppet::SSL::Host do
       lambda { @status.state = "bad" }.should raise_error(ArgumentError, /certificate state/)
     end
 
-    %w{requested signed invoked invalid}.each do |state|
+    %w{requested signed revoked invalid}.each do |state|
       it "should accept '#{state}' as a valid state" do
         @status.state = state
         @status.state.should == state

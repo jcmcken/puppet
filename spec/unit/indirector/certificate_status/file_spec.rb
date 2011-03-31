@@ -62,43 +62,20 @@ describe "Puppet::Indirector::CertificateStatus::File" do
   describe "when saving" do
     before do
       @host = Puppet::SSL::Host.new("mysigner")
-      @request = Puppet::Indirector::Request.new(:certificate_status, :save, "mysigner", @host)
-
       Puppet.settings.use(:main)
     end
-
-    describe "and no CSR is provided and no CSR is on disk" do
-      it "should fail" do
-        lambda { @terminus.save(@request) }.should raise_error(ArgumentError, /certificate request/)
-      end
-    end
-
-    describe "and a CSR is provided but none is on disk" do
+    describe "when signing a cert" do
       before do
-        @host.generate_key
-
-        csr = Puppet::SSL::CertificateRequest.new(@host.name)
-        csr.generate(@host.key.content)
-        @host.certificate_request = csr
+        @host.desired_state = "signed"
+        @request = Puppet::Indirector::Request.new(:certificate_status, :save, "mysigner", @host)
       end
 
-      it "should save the CSR and sign it" do
-        Puppet::SSL::CertificateRequest.indirection.find("mysigner").should be_nil
-        @terminus.save(@request)
-
-        Puppet::SSL::Certificate.indirection.find("mysigner").should be_instance_of(
-          Puppet::SSL::Certificate
-        )
+      it "should fail if no CSR is on disk" do
+        lambda { @terminus.save(@request) }.should raise_error(Puppet::Error, /certificate request/)
       end
-    end
 
-    describe "and a CSR is on disk and none is provided" do
-      before do
+      it "should sign the on-disk CSR when it is present" do
         @host.generate_certificate_request
-        @host.certificate_request = nil
-      end
-
-      it "should sign the on-disk CSR" do
         @host.certificate_request.class.indirection.save(@host.certificate_request)
 
         @terminus.save(@request)
@@ -106,24 +83,27 @@ describe "Puppet::Indirector::CertificateStatus::File" do
         Puppet::SSL::Certificate.indirection.find("mysigner").should be_instance_of(Puppet::SSL::Certificate)
       end
     end
+    describe "when revoking a cert" do
+      before do
+        @host.desired_state = "revoked"
+        @request = Puppet::Indirector::Request.new(:certificate_status, :save, "mysigner", @host)
+      end
 
-    describe "and a CSR is both on disk and provided" do
-      it "should replace the on-disk CSR with any provided CSR and sign it" do
+      it "should fail if no certificate is on disk" do
+        lambda { @terminus.save(@request) }.should raise_error(Puppet::Error, /Cannot revoke/)
+      end
+
+      it "should revoke the certificate when it is present" do
+        pending "Can't figure out how to verify a cert has been revoked"
         @host.generate_certificate_request
-        csr1 = @host.certificate_request
-
-        # Generate a new cert request but *don't* save it to disk
-        @host.key = nil
-        @host.generate_key
-        csr2 = Puppet::SSL::CertificateRequest.new(@host.name)
-        csr2.generate(@host.key.content)
-        @host.certificate_request = csr2
+        @host.certificate_request.class.indirection.save(@host.certificate_request)
+        ca = Puppet::SSL::CertificateAuthority.new
+        cert = ca.sign(@request.key)
+        #Puppet[:cacert] = Puppet::SSL::Certificate.indirection.find("ca")
 
         @terminus.save(@request)
 
-        cert = Puppet::SSL::Certificate.indirection.find("mysigner")
-        cert.content.public_key.to_s.should_not == csr1.content.public_key.to_s
-        cert.content.public_key.to_s.should == csr2.content.public_key.to_s
+        lambda { ca.verify(@request.instance.name) }.should raise_error(Puppet::SSL::CertificateAuthority::CertificateVerificationError, /revoked/)
       end
     end
   end
