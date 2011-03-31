@@ -23,14 +23,18 @@ class Puppet::Indirector::CertificateStatus::File < Puppet::Indirector::Code
   end
 
   def save(request)
-    name = request.key
-    instance = request.instance
-
-    if instance.certificate_request
-      instance.certificate_request.class.indirection.save(instance.certificate_request)
+    if request.instance.desired_state == "signed"
+      certificate_request = Puppet::SSL::CertificateRequest.indirection.find(request.key)
+      raise Puppet::Error, "Cannot sign for host #{request.key} without a certificate request" unless certificate_request
+      ca.sign(request.key)
+    elsif request.instance.desired_state == "revoked"
+      certificate = Puppet::SSL::Certificate.indirection.find(request.key)
+      raise Puppet::Error, "Cannot revoke host #{request.key} because has it doesn't have a signed certificate" unless certificate
+      ca.revoke(request.key)
+    else
+      raise Puppet::Error, "State #{request.instance.desired_state} invalid; Must specify desired state of 'signed' or 'revoked' for host #{request.key}"
     end
 
-    ca.sign(request.key)
   end
 
   def search(request)
