@@ -248,35 +248,41 @@ class Puppet::SSL::Host
   end
 
   def to_pson(*args)
-    pson_hash = {
-      :name  => name
-    }
+    my_cert = Puppet::SSL::Certificate.indirection.find(name)
+    pson_hash = { :name  => name }
 
-    if certificate_request
+    mystate = state(my_cert)
+
+    pson_hash[:state]                = mystate[0]
+    pson_hash[:verification_message] = mystate[1]
+
+    if mystate[0] == 'requested'
       pson_hash[:fingerprint] = certificate_request.fingerprint
-      pson_hash[:state] = 'requested'
     else
-      invalid = false
-      public_key = Puppet::SSL::Certificate.indirection.find(name)
-
-      begin
-        certificate_authority = Puppet::SSL::CertificateAuthority.new
-        certificate_authority.verify(public_key)
-      rescue Puppet::SSL::CertificateAuthority::CertificateVerificationError => details
-        invalid = details.to_s
-      end
-
-      if invalid
-        pson_hash[:state] = (invalid =~ /revoked/ ? 'revoked' : 'invalid')
-        pson_hash[:verification_message] = invalid
-        pson_hash[:fingerprint] = public_key.fingerprint
-      else
-        pson_hash[:fingerprint] = public_key.fingerprint
-        pson_hash[:state] = 'signed'
-      end
+      pson_hash[:fingerprint] = my_cert.fingerprint
     end
 
     pson_hash.to_pson(*args)
+  end
+
+  def state(my_cert)
+    state = nil
+    verification_message = nil
+
+    if certificate_request
+      return ['requested', nil]
+    end
+
+    begin
+      certificate_authority = Puppet::SSL::CertificateAuthority.new
+      certificate_authority.verify(my_cert)
+      state = 'signed'
+    rescue Puppet::SSL::CertificateAuthority::CertificateVerificationError => details
+      verification_message = details.to_s
+      state = (verification_message =~ /revoked/ ? 'revoked' : 'invalid')
+    end
+
+    [state, verification_message]
   end
 
   # Attempt to retrieve a cert, if we don't already have one.
