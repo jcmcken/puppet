@@ -87,6 +87,25 @@ describe "Puppet::Indirector::CertificateStatus::File" do
     end
   end
 
+  def generate_csr(host)
+    host.generate_key
+    csr = Puppet::SSL::CertificateRequest.new(host.name)
+    csr.generate(host.key.content)
+    Puppet::SSL::CertificateRequest.indirection.save(csr)
+  end
+
+  def sign_csr(host)
+    host.desired_state = "signed"
+    @terminus.save(Puppet::Indirector::Request.new(:certificate_status, :save, host.name, host))
+  end
+
+  def generate_signed_cert(host)
+    generate_csr(host)
+    sign_csr(host)
+
+    @terminus.find(Puppet::Indirector::Request.new(:certificate_status, :find, host.name, host))
+  end
+
   describe "when saving" do
     before do
       @host = Puppet::SSL::Host.new("foobar")
@@ -113,7 +132,6 @@ describe "Puppet::Indirector::CertificateStatus::File" do
 
     describe "when revoking a cert" do
       before do
-        Puppet.settings.use(:main)
         @request = Puppet::Indirector::Request.new(:certificate_status, :save, "foobar", @host)
       end
 
@@ -133,33 +151,22 @@ describe "Puppet::Indirector::CertificateStatus::File" do
     end
   end
 
-  def generate_signed_cert(host)
-    host.generate_key
-
-    # Generate CSR
-    csr = Puppet::SSL::CertificateRequest.new(host.name)
-    csr.generate(host.key.content)
-    Puppet::SSL::CertificateRequest.indirection.save(csr)
-
-    # Sign CSR
-    host.desired_state = "signed"
-    @terminus.save(Puppet::Indirector::Request.new(:certificate_status, :save, "foobar", host))
-
-    @terminus.find(Puppet::Indirector::Request.new(:certificate_status, :find, "foobar", host))
-  end
-
   describe "when deleting" do
     before do
       @host = Puppet::SSL::Host.new("clean_me")
       @request = Puppet::Indirector::Request.new(:certificate_status, :delete, "clean_me", @host)
+      Puppet.settings.use(:main)
     end
 
-    it "should fail if no certificate, request, or key is on disk" do
-      lambda { @terminus.destroy(@request) }.should raise_error(Puppet::Error, /Cannot revoke/)
+    it "should return false if no certificate, request, or key is on disk" do
+      @terminus.destroy(@request).should be_false
     end
 
-    it "should clean certs, cert requests, keys"
-
+    it "should clean certs, cert requests, keys" do
+      generate_signed_cert(Puppet::SSL::Host.new("clean_signed_cert"))
+      generate_csr(Puppet::SSL::Host.new("clean_csr"))
+      @terminus.destroy(@request).should == ["was deleted"]
+    end
   end
 
   describe "when searching" do
