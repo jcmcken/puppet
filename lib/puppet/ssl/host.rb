@@ -251,12 +251,12 @@ class Puppet::SSL::Host
     my_cert = Puppet::SSL::Certificate.indirection.find(name)
     pson_hash = { :name  => name }
 
-    mystate = state(my_cert)
+    my_state = state
 
-    pson_hash[:state]                = mystate[0]
-    pson_hash[:verification_message] = mystate[1]
+    pson_hash[:state]                = my_state[0]
+    pson_hash[:verification_message] = my_state[1]
 
-    if mystate[0] == 'requested'
+    if my_state[0] == 'requested'
       pson_hash[:fingerprint] = certificate_request.fingerprint
     else
       pson_hash[:fingerprint] = my_cert.fingerprint
