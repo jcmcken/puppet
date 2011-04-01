@@ -714,43 +714,6 @@ describe Puppet::SSL::Host do
     end
   end
 
-  describe "when managing certificate status" do
-    before do
-      @status = Puppet::SSL::Host.new("mysigner")
-      Puppet::SSL::CertificateAuthority.stubs(:ca?).returns true
-    end
-
-    it "should have a name" do
-      @status.name.should == "mysigner"
-    end
-
-    it "should accept a 'fingerprint' attribute" do
-      @status.fingerprint = "something"
-      @status.fingerprint.should == "something"
-    end
-
-    it "should accept a 'message' attribute" do
-      @status.message = "something"
-      @status.message.should == "something"
-    end
-
-    it "should accept a 'state' attribute" do
-      @status.state = "invalid"
-      @status.state.should == "invalid"
-    end
-
-    it "should fail unless the state is a valid listed state" do
-      lambda { @status.state = "bad" }.should raise_error(ArgumentError, /certificate state/)
-    end
-
-    %w{requested signed revoked invalid}.each do |state|
-      it "should accept '#{state}' as a valid state" do
-        @status.state = state
-        @status.state.should == state
-      end
-    end
-  end
-
   describe "when converting to PSON" do
     include PuppetSpec::Files
 
@@ -766,9 +729,10 @@ describe Puppet::SSL::Host do
       host = Puppet::SSL::Host.new("bazinga")
       host.generate_certificate_request
       pson_string = {
-        :fingerprint => host.certificate_request.fingerprint,
-        :state       => 'requested',
-        :name        => host.name
+        :fingerprint          => host.certificate_request.fingerprint,
+        :state                => 'requested',
+        :verification_message => nil,
+        :name                 => host.name
       }.to_pson
 
       Puppet::SSL::Host.new(host.name).to_pson.should == pson_string
@@ -779,9 +743,10 @@ describe Puppet::SSL::Host do
       host.generate_certificate_request
       @ca.sign(host.name)
       pson_string = {
-        :fingerprint => Puppet::SSL::Certificate.indirection.find(host.name).fingerprint,
-        :state       => 'signed',
-        :name        => host.name
+        :fingerprint          => Puppet::SSL::Certificate.indirection.find(host.name).fingerprint,
+        :state                => 'signed',
+        :name                 => host.name,
+        :verification_message => nil,
       }.to_pson
 
       Puppet::SSL::Host.new(host.name).to_pson.should == pson_string
@@ -793,9 +758,9 @@ describe Puppet::SSL::Host do
       @ca.sign(host.name)
       @ca.revoke(host.name)
       pson_string = {
-        :fingerprint => Puppet::SSL::Certificate.indirection.find(host.name).fingerprint,
-        :state       => 'revoked',
-        :name        => host.name,
+        :fingerprint          => Puppet::SSL::Certificate.indirection.find(host.name).fingerprint,
+        :state                => 'revoked',
+        :name                 => host.name,
         :verification_message => 'certificate revoked'
       }.to_pson
 
