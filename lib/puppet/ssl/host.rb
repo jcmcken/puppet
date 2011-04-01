@@ -265,26 +265,6 @@ class Puppet::SSL::Host
     pson_hash.to_pson(*args)
   end
 
-  def state(my_cert)
-    state = nil
-    verification_message = nil
-
-    if certificate_request
-      return ['requested', nil]
-    end
-
-    begin
-      certificate_authority = Puppet::SSL::CertificateAuthority.new
-      certificate_authority.verify(my_cert)
-      state = 'signed'
-    rescue Puppet::SSL::CertificateAuthority::CertificateVerificationError => details
-      verification_message = details.to_s
-      state = (verification_message =~ /revoked/ ? 'revoked' : 'invalid')
-    end
-
-    [state, verification_message]
-  end
-
   # Attempt to retrieve a cert, if we don't already have one.
   def wait_for_cert(time)
     begin
@@ -319,6 +299,20 @@ class Puppet::SSL::Host
         puts detail.backtrace if Puppet[:trace]
         Puppet.err "Could not request certificate: #{detail}"
       end
+    end
+  end
+
+  def state
+    my_cert = Puppet::SSL::Certificate.indirection.find(name)
+    if certificate_request
+      return ['requested', nil]
+    end
+
+    begin
+      Puppet::SSL::CertificateAuthority.new.verify(my_cert)
+      return ['signed', nil]
+    rescue Puppet::SSL::CertificateAuthority::CertificateVerificationError => details
+      return ['revoked', details.to_s]
     end
   end
 
