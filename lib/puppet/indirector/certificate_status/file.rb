@@ -38,7 +38,6 @@ class Puppet::Indirector::CertificateStatus::File < Puppet::Indirector::Code
   end
 
   def search(request)
-
     # Support historic interface wherein users provide classes to filter
     # the search.  When used via the REST API, the arguments must be
     # a Symbol or an Array containing Symbol objects.
