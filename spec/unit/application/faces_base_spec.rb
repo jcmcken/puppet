@@ -73,7 +73,8 @@ describe Puppet::Application::FacesBase do
 
       it "should fail if no action is given" do
         expect { app.preinit; app.parse_options }.
-          to raise_error OptionParser::MissingArgument, /No action given/
+          to raise_error OptionParser::MissingArgument,
+            /No action given on the command line.  Avaliable actions are: foo/
       end
 
       it "should report a sensible error when options with = fail" do

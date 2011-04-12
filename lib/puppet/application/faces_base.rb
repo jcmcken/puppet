@@ -103,7 +103,10 @@ class Puppet::Application::FacesBase < Puppet::Application
     end
 
     unless @action
-      raise OptionParser::MissingArgument.new("No action given on the command line")
+      available_actions = face.actions.join(", ")
+      raise OptionParser::MissingArgument.new(
+        "No action given on the command line.  Avaliable actions are: #{available_actions}"
+      )
     end
 
     # Now we can interact with the default option code to build behaviour
