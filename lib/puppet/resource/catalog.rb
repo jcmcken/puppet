@@ -535,11 +535,20 @@ class Puppet::Resource::Catalog < Puppet::SimpleGraph
 
   # Store the classes in the classfile.
   def write_class_file
-      ::File.open(Puppet[:classfile], "w") do |f|
-        f.puts classes.join("\n")
-      end
+    ::File.open(Puppet[:classfile], "w") do |f|
+      f.puts classes.join("\n")
+    end
   rescue => detail
-      Puppet.err "Could not create class file #{Puppet[:classfile]}: #{detail}"
+    Puppet.err "Could not create class file #{Puppet[:classfile]}: #{detail}"
+  end
+
+  # Store the list of resources we manage
+  def write_resource_file
+    ::File.open(Puppet[:resourcefile], "w") do |f|
+      f.puts resources.map {|r| "#{r.type}[#{r[r.name_var]}]"}.join("\n")
+    end
+  rescue => detail
+    Puppet.err "Could not create resource file #{Puppet[:resourcefile]}: #{detail}"
   end
 
   # Produce the graph files if requested.

@@ -10,6 +10,30 @@ describe Puppet::Resource::Catalog, "when compiling" do
     Puppet::Util::Storage.stubs(:store)
   end
 
+  it "should write its resources' types and namevars to the resource file" do
+    catalog = Puppet::Resource::Catalog.new("host")
+
+    resourcefile = tmpfile('resourcefile')
+    Puppet[:resourcefile] = resourcefile
+
+    resource = Puppet::Type.type('file').new(:title => 'sam')
+    resource2 = Puppet::Type.type('exec').new(:title => 'bob', :command => '/bin/rm -rf /')
+    catalog.add_resource(resource, resource2)
+    catalog.write_resource_file
+    File.open(resourcefile).readlines.should =~ ["file[/tmp/sam]\n","exec[/bin/rm -rf /]\n"]
+  end
+
+  it "should log an error if unable to write to the resource file" do
+    catalog = Puppet::Resource::Catalog.new("host")
+    Puppet[:resourcefile] = '//bad file'
+
+    catalog.add_resource(Puppet::Type.type('file').new(:title => '/tmp/foo'))
+    catalog.write_resource_file
+    @logs.size.should == 1
+    @logs.first.message.should =~ /Could not create resource file \/\/bad file/
+    @logs.first.level.should == :err
+  end
+
   it "should be able to write its list of classes to the class file" do
     @catalog = Puppet::Resource::Catalog.new("host")
 
