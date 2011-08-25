@@ -32,6 +32,9 @@ describe Puppet::Resource::Catalog, "when compiling" do
     ]
   end
 
+  it "should not write resources that are only audited" do
+  end
+
   it "should log an error if unable to write to the resource file" do
     catalog = Puppet::Resource::Catalog.new("host")
     Puppet[:resourcefile] = '//bad file'

@@ -544,6 +544,7 @@ class Puppet::Resource::Catalog < Puppet::SimpleGraph
 
   # Store the list of resources we manage
   def write_resource_file
+        require 'ruby-debug'; debugger; 1;
     ::File.open(Puppet[:resourcefile], "w") do |f|
       to_print = resources.map do |r|
         "#{r.type}[#{r[r.name_var]}] defined in #{r.file}:#{r.line}"
