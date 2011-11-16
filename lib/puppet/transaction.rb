@@ -332,9 +332,17 @@ class Puppet::Transaction
       end
       blockers[r] <= 0
     end
-    def enqueue(r)
-      key = unguessable_deterministic_key[r]
-      ready[key] = r
+    def enqueue(*resources)
+      resources.each do |r|
+        key = unguessable_deterministic_key[r]
+        ready[key] = r
+      end
+    end
+    def finish(r)
+      direct_dependents_of(r).each do |v|
+        enqueue(v) if unblock(v)
+      end
+      done[r] = true
     end
     def next_resource
       ready.delete_min
@@ -342,24 +350,70 @@ class Puppet::Transaction
     def traverse(&block)
       real_graph.report_cycles_in_graph
 
+      deferred = []
+      providerless_types = []
+
       while (r = next_resource) && !transaction.stop_processing?
-        # If we generated resources, we don't know what they are now
-        # blocking, so we opt to recompute it, rather than try to track every
-        # change that would affect the number.
-        blockers.clear if transaction.eval_generate(r)
+        # If we use providers, we must either have one or be able to find one.
+        default = r.class.defaultprovider
+        if r.suitable?
+          made_progress = true
 
-        yield r
+          # If we generated resources, we don't know what they are now
+          # blocking, so we opt to recompute it, rather than try to track every
+          # change that would affect the number.
+          blockers.clear if transaction.eval_generate(r)
 
-        direct_dependents_of(r).each do |v|
-          enqueue(v) if unblock(v)
+          yield r
+
+          finish(r)
+        else
+          deferred << r
         end
-        done[r] = true
+
+        # If all that's left are deferred resources, deal with them.
+        if ready.empty? and deferred.any?
+          # If everything that was left is still deferred, we made no progress,
+          # and have to FAIL these resources!
+          if made_progress
+            # Re-enqueue ALL the things!
+            enqueue(*deferred)
+          else
+            deferred.each do |d|
+              # We don't automatically assign unsuitable providers, so if there
+              # is one, it must have been selected by the user.
+              if d.provider
+                d.err "Provider #{d.provider.name} is not functional on this host"
+              else
+                providerless_types << d.type
+              end
+
+              transaction.resource_status(d).failed = true
+
+              finish(d)
+            end
+          end
+
+          made_progress = false
+          deferred = []
+        end
+      end
+
+      # Just once per type. No need to punish the user.
+      providerless_types.uniq.each do |type|
+        Puppet.err "Could not find a suitable provider for #{type}"
       end
     end
   end
 
   def relationship_graph
     @relationship_graph ||= Relationship_graph_wrapper.new(catalog.relationship_graph,self)
+  end
+
+  def fail_resource(resource)
+    status = Puppet::Resource::Status.new(resource)
+    status.failed = true
+    add_resource_status(status)
   end
 
   def add_resource_status(status)
