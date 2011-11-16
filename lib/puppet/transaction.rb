@@ -92,7 +92,8 @@ class Puppet::Transaction
   # collects all of the changes, executes them, and responds to any
   # necessary events.
   def evaluate
-    prepare
+    # Add any dynamically generated resources
+    xgenerate
 
     Puppet.info "Applying configuration version '#{catalog.version}'" if catalog.version
 
@@ -241,41 +242,57 @@ class Puppet::Transaction
     @event_manager = Puppet::Transaction::EventManager.new(self)
 
     @resource_harness = Puppet::Transaction::ResourceHarness.new(self)
+
+    @prefetched_providers = Hash.new { |h,k| h[k] = {} }
   end
 
-  # Prefetch any providers that support it.  We don't support prefetching
+  def resources_by_provider(type, provider)
+    unless @resources_by_provider
+      @resources_by_provider = {}
+
+      @catalog.vertices.each do |resource|
+        if resource.class.attrclass(:provider)
+          prov = resource.provider && resource.provider.class.name
+          @resources_by_provider[type] ||= {}
+          @resources_by_provider[type][prov] ||= {}
+          @resources_by_provider[type][prov][resource.name] = resource
+        end
+      end
+    end
+
+    @resources_by_provider[type][provider] || {}
+  end
+
+  def prefetch_if_necessary(resource)
+    provider = resource.provider.class
+    return unless provider.respond_to?(:prefetch) and !prefetched_providers[resource.type][provider.name]
+
+    resources = resources_by_provider(resource.type, provider.name)
+
+    if provider == resource.class.defaultprovider
+      providerless_resources = resources_by_provider(resource.type, nil)
+      providerless_resources.values.each {|res| res.provider = provider.name}
+      resources.merge! providerless_resources
+    end
+
+    prefetch(provider, resources)
+  end
+
+  attr_reader :prefetched_providers
+
+  # Prefetch any providers that support it, yo.  We don't support prefetching
   # types, just providers.
-  def prefetch
-    prefetchers = {}
-    @catalog.vertices.each do |resource|
-      if provider = resource.provider and provider.class.respond_to?(:prefetch)
-        prefetchers[provider.class] ||= {}
-        prefetchers[provider.class][resource.name] = resource
-      end
+  def prefetch(provider, resources)
+    return if @prefetched_providers[provider.resource_type.name][provider.name]
+    Puppet.debug "Prefetching #{provider.name} resources for #{provider.resource_type.name}"
+    begin
+      provider.prefetch(resources)
+    rescue => detail
+      puts detail.backtrace if Puppet[:trace]
+      Puppet.err "Could not prefetch #{provider.resource_type.name} provider '#{provider.name}': #{detail}"
     end
-
-    # Now call prefetch, passing in the resources so that the provider instances can be replaced.
-    prefetchers.each do |provider, resources|
-      Puppet.debug "Prefetching #{provider.name} resources for #{provider.resource_type.name}"
-      begin
-        provider.prefetch(resources)
-      rescue => detail
-        puts detail.backtrace if Puppet[:trace]
-        Puppet.err "Could not prefetch #{provider.resource_type.name} provider '#{provider.name}': #{detail}"
-      end
-    end
+    @prefetched_providers[provider.resource_type.name][provider.name] = true
   end
-
-  # Prepare to evaluate the resources in a transaction.
-  def prepare
-    # Now add any dynamically generated resources
-    xgenerate
-
-    # Then prefetch.  It's important that we generate and then prefetch,
-    # so that any generated resources also get prefetched.
-    prefetch
-  end
-
 
   # We want to monitor changes in the relationship graph of our
   # catalog but this is complicated by the fact that the catalog
@@ -358,6 +375,8 @@ class Puppet::Transaction
         default = r.class.defaultprovider
         if r.suitable?
           made_progress = true
+
+          transaction.prefetch_if_necessary(r)
 
           # If we generated resources, we don't know what they are now
           # blocking, so we opt to recompute it, rather than try to track every
