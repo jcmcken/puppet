@@ -334,28 +334,28 @@ class Puppet::Transaction
 
       real_graph.add_edge(f,t,label)
     end
-    # Decrement the blocker count for resource r by 1. If the number of
+    # Decrement the blocker count for the resource by 1. If the number of
     # blockers is unknown, count them and THEN decrement by 1.
-    def unblock(r)
-      blockers[r] ||= direct_dependencies_of(r).select { |r2| !done[r2] }.length
-      if blockers[r] > 0
-        blockers[r] -= 1
+    def unblock(resource)
+      blockers[resource] ||= direct_dependencies_of(resource).select { |r2| !done[r2] }.length
+      if blockers[resource] > 0
+        blockers[resource] -= 1
       else
-        r.warning "appears to have a negative number of dependencies"
+        resource.warning "appears to have a negative number of dependencies"
       end
-      blockers[r] <= 0
+      blockers[resource] <= 0
     end
     def enqueue(*resources)
-      resources.each do |r|
-        key = unguessable_deterministic_key[r]
-        ready[key] = r
+      resources.each do |resource|
+        key = unguessable_deterministic_key[resource]
+        ready[key] = resource
       end
     end
-    def finish(r)
-      direct_dependents_of(r).each do |v|
+    def finish(resource)
+      direct_dependents_of(resource).each do |v|
         enqueue(v) if unblock(v)
       end
-      done[r] = true
+      done[resource] = true
     end
     def next_resource
       ready.delete_min
@@ -363,52 +363,52 @@ class Puppet::Transaction
     def traverse(&block)
       real_graph.report_cycles_in_graph
 
-      deferred = []
+      deferred_resources = []
       providerless_types = []
 
-      while (r = next_resource) && !transaction.stop_processing?
-        if r.suitable?
+      while (resource = next_resource) && !transaction.stop_processing?
+        if resource.suitable?
           made_progress = true
 
-          transaction.prefetch_if_necessary(r)
+          transaction.prefetch_if_necessary(resource)
 
           # If we generated resources, we don't know what they are now
           # blocking, so we opt to recompute it, rather than try to track every
           # change that would affect the number.
-          blockers.clear if transaction.eval_generate(r)
+          blockers.clear if transaction.eval_generate(resource)
 
-          yield r
+          yield resource
 
-          finish(r)
+          finish(resource)
         else
-          deferred << r
+          deferred_resources << resource
         end
 
         # If all that's left are deferred resources, deal with them.
-        if ready.empty? and deferred.any?
+        if ready.empty? and deferred_resources.any?
           # If everything that was left is still deferred, we made no progress,
           # and have to FAIL these resources!
           if made_progress
             # Re-enqueue ALL the things!
-            enqueue(*deferred)
+            enqueue(*deferred_resources)
           else
-            deferred.each do |d|
+            deferred_resources.each do |deferred_resource|
               # We don't automatically assign unsuitable providers, so if there
               # is one, it must have been selected by the user.
-              if d.provider
-                d.err "Provider #{d.provider.class.name} is not functional on this host"
+              if deferred_resource.provider
+                deferred_resource.err "Provider #{deferred_resource.provider.class.name} is not functional on this host"
               else
-                providerless_types << d.type
+                providerless_types << deferred_resource.type
               end
 
-              transaction.resource_status(d).failed = true
+              transaction.resource_status(deferred_resource).failed = true
 
-              finish(d)
+              finish(deferred_resource)
             end
           end
 
           made_progress = false
-          deferred = []
+          deferred_resources = []
         end
       end
 
