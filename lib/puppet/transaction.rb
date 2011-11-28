@@ -246,52 +246,51 @@ class Puppet::Transaction
     @prefetched_providers = Hash.new { |h,k| h[k] = {} }
   end
 
-  def resources_by_provider(type, provider)
+  def resources_by_provider(type_name, provider_name)
     unless @resources_by_provider
-      @resources_by_provider = {}
+      @resources_by_provider = Hash.new { |h, k| h[k] = Hash.new { |h, k| h[k] = {} } }
 
       @catalog.vertices.each do |resource|
         if resource.class.attrclass(:provider)
           prov = resource.provider && resource.provider.class.name
-          @resources_by_provider[type] ||= {}
-          @resources_by_provider[type][prov] ||= {}
-          @resources_by_provider[type][prov][resource.name] = resource
+          @resources_by_provider[resource.type][prov][resource.name] = resource
         end
       end
     end
 
-    @resources_by_provider[type][provider] || {}
+    @resources_by_provider[type_name][provider_name] || {}
   end
 
   def prefetch_if_necessary(resource)
-    provider = resource.provider.class
-    return unless provider.respond_to?(:prefetch) and !prefetched_providers[resource.type][provider.name]
+    provider_class = resource.provider.class
+    return unless provider_class.respond_to?(:prefetch) and !prefetched_providers[resource.type][provider_class.name]
 
-    resources = resources_by_provider(resource.type, provider.name)
+    resources = resources_by_provider(resource.type, provider_class.name)
 
-    if provider == resource.class.defaultprovider
+    if provider_class == resource.class.defaultprovider
       providerless_resources = resources_by_provider(resource.type, nil)
-      providerless_resources.values.each {|res| res.provider = provider.name}
+      providerless_resources.values.each {|res| res.provider = provider_class.name}
       resources.merge! providerless_resources
     end
 
-    prefetch(provider, resources)
+    prefetch(provider_class, resources)
   end
 
   attr_reader :prefetched_providers
 
   # Prefetch any providers that support it, yo.  We don't support prefetching
   # types, just providers.
-  def prefetch(provider, resources)
-    return if @prefetched_providers[provider.resource_type.name][provider.name]
-    Puppet.debug "Prefetching #{provider.name} resources for #{provider.resource_type.name}"
+  def prefetch(provider_class, resources)
+    type_name = provider_class.resource_type.name
+    return if @prefetched_providers[type_name][provider_class.name]
+    Puppet.debug "Prefetching #{provider_class.name} resources for #{type_name}"
     begin
-      provider.prefetch(resources)
+      provider_class.prefetch(resources)
     rescue => detail
       puts detail.backtrace if Puppet[:trace]
-      Puppet.err "Could not prefetch #{provider.resource_type.name} provider '#{provider.name}': #{detail}"
+      Puppet.err "Could not prefetch #{type_name} provider '#{provider_class.name}': #{detail}"
     end
-    @prefetched_providers[provider.resource_type.name][provider.name] = true
+    @prefetched_providers[type_name][provider_class.name] = true
   end
 
   # We want to monitor changes in the relationship graph of our
@@ -402,7 +401,7 @@ class Puppet::Transaction
               # We don't automatically assign unsuitable providers, so if there
               # is one, it must have been selected by the user.
               if d.provider
-                d.err "Provider #{d.provider.name} is not functional on this host"
+                d.err "Provider #{d.provider.class.name} is not functional on this host"
               else
                 providerless_types << d.type
               end

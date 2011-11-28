@@ -682,9 +682,35 @@ describe Puppet::Transaction do
     let(:catalog) { Puppet::Resource::Catalog.new }
     let(:transaction) { Puppet::Transaction.new(catalog) }
     let(:resource) { Puppet::Type.type(:sshkey).create :title => "foo", :name => "bar", :type => :dsa, :key => "eh", :provider => :parsed }
+    let(:resource2) { Puppet::Type.type(:package).create :title => "blah", :provider => "apt" }
 
     before :each do
       catalog.add_resource resource
+      catalog.add_resource resource2
+    end
+
+
+    describe "#resources_by_provider" do
+      it "should fetch resources by their type and provider" do
+        transaction.resources_by_provider(:sshkey, :parsed).should == {
+          resource.name => resource,
+        }
+
+        transaction.resources_by_provider(:package, :apt).should == {
+          resource2.name => resource2,
+        }
+      end
+
+      it "should omit resources whose types don't use providers" do
+        # faking the sshkey type not to have a provider
+        resource.class.stubs(:attrclass).returns nil
+
+        transaction.resources_by_provider(:sshkey, :parsed).should == {}
+      end
+
+      it "should return empty hash for providers with no resources" do
+        transaction.resources_by_provider(:package, :yum).should == {}
+      end
     end
 
     it "should match resources by name, not title" do
