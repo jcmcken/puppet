@@ -316,6 +316,7 @@ class Puppet::Transaction
       @done = {}
       @blockers = {}
       @unguessable_deterministic_key = Hash.new { |h,k| h[k] = Digest::SHA1.hexdigest("NaCl, MgSO4 (salts) and then #{k.ref}") }
+      @providerless_types = []
       vertices.each do |v|
         blockers[v] = direct_dependencies_of(v).length
         enqueue(v) if blockers[v] == 0
@@ -364,7 +365,6 @@ class Puppet::Transaction
       real_graph.report_cycles_in_graph
 
       deferred_resources = []
-      providerless_types = []
 
       while (resource = next_resource) && !transaction.stop_processing?
         if resource.suitable?
@@ -384,27 +384,11 @@ class Puppet::Transaction
           deferred_resources << resource
         end
 
-        # If all that's left are deferred resources, deal with them.
         if ready.empty? and deferred_resources.any?
-          # If everything that was left is still deferred, we made no progress,
-          # and have to FAIL these resources!
           if made_progress
-            # Re-enqueue ALL the things!
             enqueue(*deferred_resources)
           else
-            deferred_resources.each do |deferred_resource|
-              # We don't automatically assign unsuitable providers, so if there
-              # is one, it must have been selected by the user.
-              if deferred_resource.provider
-                deferred_resource.err "Provider #{deferred_resource.provider.class.name} is not functional on this host"
-              else
-                providerless_types << deferred_resource.type
-              end
-
-              transaction.resource_status(deferred_resource).failed = true
-
-              finish(deferred_resource)
-            end
+            fail_unsuitable_resources(deferred_resources)
           end
 
           made_progress = false
@@ -413,8 +397,24 @@ class Puppet::Transaction
       end
 
       # Just once per type. No need to punish the user.
-      providerless_types.uniq.each do |type|
+      @providerless_types.uniq.each do |type|
         Puppet.err "Could not find a suitable provider for #{type}"
+      end
+    end
+
+    def fail_unsuitable_resources(resources)
+      resources.each do |resource|
+        # We don't automatically assign unsuitable providers, so if there
+        # is one, it must have been selected by the user.
+        if resource.provider
+          resource.err "Provider #{resource.provider.class.name} is not functional on this host"
+        else
+          @providerless_types << resource.type
+        end
+
+        transaction.resource_status(resource).failed = true
+
+        finish(resource)
       end
     end
   end
