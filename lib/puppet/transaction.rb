@@ -367,8 +367,6 @@ class Puppet::Transaction
       providerless_types = []
 
       while (r = next_resource) && !transaction.stop_processing?
-        # If we use providers, we must either have one or be able to find one.
-        default = r.class.defaultprovider
         if r.suitable?
           made_progress = true
 
