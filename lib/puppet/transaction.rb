@@ -423,12 +423,6 @@ class Puppet::Transaction
     @relationship_graph ||= Relationship_graph_wrapper.new(catalog.relationship_graph,self)
   end
 
-  def fail_resource(resource)
-    status = Puppet::Resource::Status.new(resource)
-    status.failed = true
-    add_resource_status(status)
-  end
-
   def add_resource_status(status)
     report.add_resource_status status
   end
