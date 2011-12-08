@@ -996,7 +996,7 @@ describe Puppet::Type.type(:file) do
 
     describe "on Windows systems", :if => Puppet.features.microsoft_windows? do
       it "should provide valid default values when ACLs are not supported" do
-        Puppet::Util::Windows::Security.stubs(:supports_acl?).with(source).returns false
+        Puppet::Util::Windows::Security.expects(:supports_acl?).at_least_once.with(source).returns false
 
         file = described_class.new(
           :path   => path,
