@@ -386,6 +386,10 @@ class Puppet::Util::Settings
     setting
   end
 
+  def names
+    map {|name, value| name }.map(&:to_s).sort
+  end
+
   # This has to be private, because it doesn't add the settings to @config
   private :newsetting
 
