@@ -1,4 +1,5 @@
 require 'puppet/node/environment'
+require 'pathname'
 
 class Puppet::Parser::TypeLoader
   include Puppet::Node::Environment::Helper
@@ -111,11 +112,14 @@ class Puppet::Parser::TypeLoader
     # And then load all files from each module, but (relying on system
     # behavior) only load files from the first module of a given name.  E.g.,
     # given first/foo and second/foo, only files from first/foo will be loaded.
-    module_names.each do |name|
-      mod = Puppet::Module.new(name, environment)
+    module_names.each do |mod_name|
+      mod = Puppet::Module.new(mod_name, environment)
       Find.find(File.join(mod.path, "manifests")) do |path|
-        if path =~ /\.pp$/ or path =~ /\.rb$/
-          import(path)
+        path = ::Pathname.new(path)
+        if ['.rb', '.pp'].include?(path.extname)
+          # import gets the module_name wrong if given a fully qualified path
+          relative_path = File.join(mod_name, path.relative_path_from(Pathname.new(File.join(mod.path, 'manifests'))))
+          import(relative_path)
         end
       end
     end
