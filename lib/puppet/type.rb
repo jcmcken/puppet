@@ -1899,6 +1899,12 @@ class Type
     self.ref
   end
 
+  def to_resource
+    resource = self.retrieve_resource
+    resource.tag(*self.tags)
+    resource
+  end
+
   def virtual?;  !!@virtual;  end
   def exported?; !!@exported; end
 
