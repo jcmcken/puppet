@@ -16,7 +16,6 @@ class Puppet::Network::Handler
     attr_reader :ca
 
     @interface = XMLRPC::Service::Interface.new("puppetmaster") { |iface|
-        iface.add_method("string getconfig(string)")
         iface.add_method("int freshness()")
     }
 
@@ -38,28 +37,6 @@ class Puppet::Network::Handler
       args[:Classes] = hash[:Classes] if hash.include?(:Classes)
     end
 
-    # Call our various handlers; this handler is getting deprecated.
-    def getconfig(facts, format = "marshal", client = nil, clientip = nil)
-      facts = decode_facts(facts)
-
-      client ||= facts["hostname"]
-
-      # Pass the facts to the fact handler
-      Puppet::Node::Facts.indirection.save(Puppet::Node::Facts.new(client, facts)) unless local?
-
-      catalog = Puppet::Resource::Catalog.indirection.find(client)
-
-      case format
-      when "yaml"
-        return CGI.escape(catalog.extract.to_yaml)
-      when "marshal"
-        return CGI.escape(Marshal.dump(catalog.extract))
-      else
-        raise "Invalid markup format '#{format}'"
-      end
-    end
-
-    #
     def decode_facts(facts)
       if @local
         # we don't need to do anything, since we should already
