@@ -551,9 +551,6 @@ class Puppet::Resource::Catalog < Puppet::SimpleGraph
       if resource.class == Puppet::Resource
         resource = resource.dup
         resource.catalog = result
-      elsif resource.is_a?(Puppet::TransObject)
-        resource = resource.dup
-        resource.catalog = result
       elsif resource.is_a?(Puppet::Parser::Resource)
         resource = resource.to_resource
         resource.catalog = result
