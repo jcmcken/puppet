@@ -173,7 +173,7 @@ describe Puppet::Resource::Catalog, "when compiling" do
 
     # This tests #931.
     it "should not lose track of resources whose names vary" do
-      changer = Puppet::TransObject.new 'changer', 'test'
+      changer = Puppet::Resource.new :file, @basepath+'/test/', :parameters => {:ensure => :directory}
 
       config = Puppet::Resource::Catalog.new('test')
       config.add_resource(changer)
@@ -181,16 +181,9 @@ describe Puppet::Resource::Catalog, "when compiling" do
 
       config.add_edge(@top, changer)
 
-      resource = stub 'resource', :name => "changer2", :title => "changer2", :ref => "Test[changer2]", :catalog= => nil, :remove => nil
-
-      #changer is going to get duplicated as part of a fix for aliases 1094
-      changer.expects(:dup).returns(changer)
-      changer.expects(:to_ral).returns(resource)
-
-      newconfig = nil
-
-      proc { @catalog = config.to_ral }.should_not raise_error
-      @catalog.resource("Test[changer2]").should equal(resource)
+      catalog = config.to_ral
+      catalog.resource("File[#{@basepath}/test/]").should equal(changer)
+      catalog.resource("File[#{@basepath}/test]").should equal(changer)
     end
 
     after do
@@ -208,12 +201,12 @@ describe Puppet::Resource::Catalog, "when compiling" do
       @r1 = stub_everything 'r1', :ref => "File[/a]"
       @r1.stubs(:respond_to?).with(:ref).returns(true)
       @r1.stubs(:dup).returns(@r1)
-      @r1.stubs(:is_a?).returns(Puppet::Resource).returns(true)
+      @r1.stubs(:is_a?).with(Puppet::Resource).returns(true)
 
       @r2 = stub_everything 'r2', :ref => "File[/b]"
       @r2.stubs(:respond_to?).with(:ref).returns(true)
       @r2.stubs(:dup).returns(@r2)
-      @r2.stubs(:is_a?).returns(Puppet::Resource).returns(true)
+      @r2.stubs(:is_a?).with(Puppet::Resource).returns(true)
 
       @resources = [@r1,@r2]
 
