@@ -23,16 +23,12 @@ describe "Puppet::Network::HTTP::Mongrel", "when turning on listening", :if => P
     @mock_puppet_mongrel = mock('puppet_mongrel')
     Puppet::Network::HTTPServer::Mongrel.stubs(:new).returns(@mock_puppet_mongrel)
 
-    @listen_params = { :address => "127.0.0.1", :port => 31337, :protocols => [ :rest ] }
+    @listen_params = { :address => "127.0.0.1", :port => 31337 }
   end
 
   it "should fail if already listening" do
     @server.listen(@listen_params)
     Proc.new { @server.listen(@listen_params) }.should raise_error(RuntimeError)
-  end
-
-  it "should require at least one protocol" do
-    Proc.new { @server.listen(@listen_params.delete_if {|k,v| :protocols == k}) }.should raise_error(ArgumentError)
   end
 
   it "should require a listening address to be specified" do
