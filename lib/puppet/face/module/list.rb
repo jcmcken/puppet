@@ -17,6 +17,7 @@ Puppet::Face.define(:module, '1.0.0') do
       environment = Puppet::Node::Environment.new('production')
       type_loader = Puppet::Parser::TypeLoader.new(environment)
       type_loader.import_all
+      modules = Puppet::Module.find_modules(environment)
 
       module_contents = environment.known_resource_types.grouped_by_module
 

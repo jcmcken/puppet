@@ -403,24 +403,6 @@ describe Puppet::Module do
   end
 end
 
-describe Puppet::Module, " when building its search path" do
-  it "should use the current environment's search path if no environment is specified" do
-    env = mock 'env'
-    env.expects(:modulepath).returns "eh"
-    Puppet::Node::Environment.expects(:new).with(nil).returns env
-
-    Puppet::Module.modulepath.should == "eh"
-  end
-
-  it "should use the specified environment's search path if an environment is specified" do
-    env = mock 'env'
-    env.expects(:modulepath).returns "eh"
-    Puppet::Node::Environment.expects(:new).with("foo").returns env
-
-    Puppet::Module.modulepath("foo").should == "eh"
-  end
-end
-
 describe Puppet::Module, "when finding matching manifests" do
   before do
     @mod = Puppet::Module.new("mymod")
@@ -554,7 +536,7 @@ describe Puppet::Module do
     Puppet::Module.new("yay")
   end
 
-  describe "when loading the medatada file", :if => Puppet.features.pson? do
+  describe "when loading the metadata file", :if => Puppet.features.pson? do
     before do
       @data = {
         :license       => "GPL2",
@@ -594,5 +576,36 @@ describe Puppet::Module do
 
 
     it "should fail if the discovered name is different than the metadata name"
+  end
+
+  describe "#find_modules" do
+    include PuppetSpec::Files
+
+    let(:moduledir) { tmpdir('moduledir') }
+    let(:moduledir2) { tmpdir('moduledir2') }
+    let(:moduledirs) { [moduledir, moduledir2]}
+
+    it "should return empty module list if the modulepath is empty" do
+      environment = Puppet::Node::Environment.new('production')
+      environment.modulepath = moduledirs
+      Puppet::Module.find_modules(environment).should == []
+    end
+
+    it "should return all the uniq modules in the environment's module path" do
+      dummy_module_path = File.join(moduledir, 'dummymodule')
+      dummy_module_path2 = File.join(moduledir, 'dummymodule2')
+      dummy_module_path3 = File.join(moduledir2, 'dummymodule')
+      Dir.mkdir(dummy_module_path)
+      Dir.mkdir(dummy_module_path2)
+      Dir.mkdir(dummy_module_path3)
+
+      environment = Puppet::Node::Environment.new('production')
+      environment.modulepath = moduledirs
+      found_modules = Puppet::Module.find_modules(environment).map {|m| [m.name, m.environment, m.class]}
+      found_modules.should == [
+        ['dummymodule', environment, Puppet::Module],
+        ['dummymodule2', environment, Puppet::Module]
+      ]
+    end
   end
 end

@@ -19,11 +19,18 @@ class Puppet::Module
 
   FILETYPES = [MANIFESTS, FILES, TEMPLATES, PLUGINS]
 
-  # Return an array of paths by splitting the +modulepath+ config
-  # parameter. Only consider paths that are absolute and existing
-  # directories
-  def self.modulepath(environment = nil)
-    Puppet::Node::Environment.new(environment).modulepath
+  def self.find_modules(environment)
+    module_names = []
+    # Collect the list of all known modules
+    environment.modulepath.each do |path|
+      Dir.chdir(path) do
+        Dir.glob("*").each do |dir|
+          next unless FileTest.directory?(dir)
+          module_names << dir
+        end
+      end
+    end
+    module_names.uniq.map { |mod_name| Puppet::Module.new(mod_name, environment) }
   end
 
   # Find and return the +module+ that +path+ belongs to. If +path+ is

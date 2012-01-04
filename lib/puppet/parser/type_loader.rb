@@ -97,28 +97,15 @@ class Puppet::Parser::TypeLoader
   def import_all
     require 'find'
 
-    module_names = []
-    # Collect the list of all known modules
-    environment.modulepath.each do |path|
-      Dir.chdir(path) do
-        Dir.glob("*").each do |dir|
-          next unless FileTest.directory?(dir)
-          module_names << dir
-        end
-      end
-    end
-
-    module_names.uniq!
     # And then load all files from each module, but (relying on system
     # behavior) only load files from the first module of a given name.  E.g.,
     # given first/foo and second/foo, only files from first/foo will be loaded.
-    module_names.each do |mod_name|
-      mod = Puppet::Module.new(mod_name, environment)
+    Puppet::Module.find_modules(environment).each do |mod|
       Find.find(File.join(mod.path, "manifests")) do |path|
         path = ::Pathname.new(path)
         if ['.rb', '.pp'].include?(path.extname)
           # import gets the module_name wrong if given a fully qualified path
-          relative_path = File.join(mod_name, path.relative_path_from(Pathname.new(File.join(mod.path, 'manifests'))))
+          relative_path = File.join(mod.name, path.relative_path_from(Pathname.new(File.join(mod.path, 'manifests'))))
           import(relative_path)
         end
       end
