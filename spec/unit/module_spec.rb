@@ -89,80 +89,116 @@ describe Puppet::Module do
     lambda { mod.validate_puppet_version }.should raise_error(Puppet::Module::IncompatibleModule)
   end
 
-  describe "when specifying required modules" do
-    it "should support specifying a required module" do
-      mod = Puppet::Module.new("mymod")
-      mod.requires "foobar"
+  describe "when finding unsatisfied dependencies" do
+    before do
+      @mod = Puppet::Module.new("mymod")
+      @mod.stubs(:dependencies).returns [
+        {
+          "version_requirement" => ">= 2.2.0",
+          "name"                => "foobar"
+        }
+      ]
     end
 
-    it "should support specifying multiple required modules" do
-      mod = Puppet::Module.new("mymod")
-      mod.requires "foobar"
-      mod.requires "baz"
+    it "should list modules that are missing" do
+      @mod.unsatisfied_dependencies.should == [[Puppet::Module.new('foobar', @mod.environment), 'module not found']]
     end
 
-    it "should support specifying a required module and version" do
-      mod = Puppet::Module.new("mymod")
-      mod.requires "foobar", 1.0
+    it "should list modules with unsatisfied version" do
+      foobar = Puppet::Module.new("foobar")
+      foobar.version = '2.0.0'
+      @mod.environment.expects(:module).with("foobar").returns foobar
+
+      @mod.unsatisfied_dependencies.should == [[foobar, 'version mismatch']]
     end
 
-    it "should fail when required modules are missing" do
+    it "should consider a dependency without a version requirement to be satisfied" do
       mod = Puppet::Module.new("mymod")
-      mod.requires "foobar"
-
-      mod.environment.expects(:module).with("foobar").returns nil
-
-      lambda { mod.validate_dependencies }.should raise_error(Puppet::Module::MissingModule)
-    end
-
-    it "should fail when required modules are present but of the wrong version" do
-      mod = Puppet::Module.new("mymod")
-      mod.requires "foobar", 1.0
+      mod.stubs(:dependencies).returns [{ "name" => "foobar" }]
 
       foobar = Puppet::Module.new("foobar")
-      foobar.version = 2.0
-
       mod.environment.expects(:module).with("foobar").returns foobar
 
-      lambda { mod.validate_dependencies }.should raise_error(Puppet::Module::IncompatibleModule)
+      mod.unsatisfied_dependencies.should be_empty
+    end
+
+    it "should consider a dependency without a version to be unsatisfied" do
+      foobar = Puppet::Module.new("foobar")
+      @mod.environment.expects(:module).with("foobar").returns foobar
+
+      @mod.unsatisfied_dependencies.should == [[foobar, "dependency doesn't have a version"]]
+    end
+
+    it "should consider a dependency without a semantic version to be unsatisfied" do
+      foobar = Puppet::Module.new("foobar")
+      foobar.version = '5.1'
+      @mod.environment.expects(:module).with("foobar").returns foobar
+
+      @mod.unsatisfied_dependencies.should == [[foobar, "version not specified as a semantic version"]]
+    end
+
+    it "should consider a dependency requirement without a semantic version to be unsatisfied" do
+      foobar = Puppet::Module.new("foobar")
+      foobar.version = '5.1.0'
+
+      mod = Puppet::Module.new("mymod")
+      mod.stubs(:dependencies).returns [{ "name" => "foobar", "version_requirement" => '> 2.0' }]
+      mod.environment.expects(:module).with("foobar").returns foobar
+
+      mod.unsatisfied_dependencies.should == [[foobar, "version not specified as a semantic version"]]
     end
 
     it "should have valid dependencies when no dependencies have been specified" do
       mod = Puppet::Module.new("mymod")
 
-      lambda { mod.validate_dependencies }.should_not raise_error
+      mod.unsatisfied_dependencies.should == []
     end
 
-    it "should fail when some dependencies are present but others aren't" do
+    it "should only list unsatisfied dependencies" do
       mod = Puppet::Module.new("mymod")
-      mod.requires "foobar"
-      mod.requires "baz"
+      mod.stubs(:dependencies).returns [
+        {
+          "version_requirement" => ">= 2.2.0",
+          "name"                => "satisfied"
+        },
+        {
+          "version_requirement" => ">= 2.2.0",
+          "name"                => "notsatisfied"
+        }
+      ]
+      satisfied = Puppet::Module.new("satisfied")
+      satisfied.version = "3.3.0"
 
-      mod.environment.expects(:module).with("foobar").returns Puppet::Module.new("foobar")
-      mod.environment.expects(:module).with("baz").returns nil
+      mod.environment.expects(:module).with("satisfied").returns satisfied
+      mod.environment.expects(:module).with("notsatisfied").returns nil
 
-      lambda { mod.validate_dependencies }.should raise_error(Puppet::Module::MissingModule)
+      mod.unsatisfied_dependencies.should == [[
+        Puppet::Module.new('notsatisfied', mod.environment),
+        'module not found'
+      ]]
     end
 
-    it "should have valid dependencies when all dependencies are met" do
+    it "should be empty when all dependencies are met" do
       mod = Puppet::Module.new("mymod")
-      mod.requires "foobar", 1.0
-      mod.requires "baz"
+      mod.stubs(:dependencies).returns [
+        {
+          "version_requirement" => ">= 2.2.0",
+          "name"                => "satisfied"
+        },
+        {
+          "version_requirement" => "< 2.2.0",
+          "name"                => "alsosatisfied"
+        }
+      ]
+      satisfied = Puppet::Module.new("satisfied")
+      satisfied.version = "3.3.0"
+      alsosatisfied = Puppet::Module.new("alsosatisfied")
+      alsosatisfied.version = "2.1.0"
 
-      foobar = Puppet::Module.new("foobar")
-      foobar.version = 1.0
+      mod.environment.expects(:module).with("satisfied").returns satisfied
+      mod.environment.expects(:module).with("alsosatisfied").returns alsosatisfied
 
-      baz = Puppet::Module.new("baz")
-
-      mod.environment.expects(:module).with("foobar").returns foobar
-      mod.environment.expects(:module).with("baz").returns baz
-
-      lambda { mod.validate_dependencies }.should_not raise_error
-    end
-
-    it "should validate its dependendencies on initialization" do
-      Puppet::Module.any_instance.expects(:validate_dependencies)
-      Puppet::Module.new("mymod")
+      mod.unsatisfied_dependencies.should be_empty
     end
   end
 
@@ -543,7 +579,8 @@ describe Puppet::Module do
         :author        => "luke",
         :version       => "1.0",
         :source        => "http://foo/",
-        :puppetversion => "0.25"
+        :puppetversion => "0.25",
+        :dependencies  => []
       }
       @text = @data.to_pson
 
