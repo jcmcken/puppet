@@ -25,27 +25,46 @@ Puppet::Face.define(:module, '1.0.0') do
     when_invoked do |options|
       environment = Puppet::Node::Environment.new(options[:environment])
 
-      # This structure makes it easy to merge in content from known resource types
-      modules_map = environment.modules.map {|m| [m.name, {:module => m}]}
-      modules = Hash[modules_map]
+      modules_by_path = {}
 
-      if options[:verbose]
-        type_loader = Puppet::Parser::TypeLoader.new(environment)
-        type_loader.import_all
-        module_content = environment.known_resource_types.grouped_by_module
-        modules.each do |name, value|
-          value.merge! module_content[name]
+      environment.modules_by_path.map do |path, modules|
+        # This makes it easier to merge the module contents later
+        modules_map = Hash[modules.map {|m| [m.name, {:module => m}]}]
+
+        if options[:verbose]
+          # Need to have an environment with just this path as the modulepath
+          # Otherwise the first path overrides everything and we get the wrong
+          # data in known_resource_types
+          e = Puppet::Node::Environment.new(path)
+          e.modulepath = path
+
+          type_loader = Puppet::Parser::TypeLoader.new(e)
+          type_loader.import_all
+          module_content = e.known_resource_types.grouped_by_module
+          modules_map.each do |name, value|
+            value.merge! module_content[name]
+          end
         end
+        modules_by_path[path] = modules_map
       end
 
-      modules
+      modules_by_path
     end
 
-    when_rendering :console do |modules|
+    when_rendering :console do |modules_by_path|
       output = ''
-      modules.each do |name, content|
-        mod = content.delete(:module)
-        output << "#{name} (#{mod.version})\n"
+      modules_by_path.each do |path, modules|
+        output << "#{path}\n"
+        modules.each do |name, content|
+          mod = content.delete(:module)
+          output << "#{mod.name} (#{mod.version})\n"
+          content.each do |content_type, content_values|
+            output << "  #{content_type}\n"
+            content_values.each do |value|
+              output << "    #{value}\n"
+            end
+          end
+        end
       end
       output
     end

@@ -340,6 +340,24 @@ describe Puppet::Module do
     mod.path.should == modpath
   end
 
+  it "should be able to find itself in a directory other than the first directory in the module path even when in the first directory" do
+    dir = tmpdir("deep_path")
+    first = File.join(dir, "first")
+    second = File.join(dir, "second")
+
+    FileUtils.mkdir_p(first)
+    FileUtils.mkdir_p(second)
+    Puppet[:modulepath] = "#{first}#{File::PATH_SEPARATOR}#{second}"
+
+    first_modpath = File.join(first, "foo")
+    FileUtils.mkdir_p(first_modpath)
+    second_modpath = File.join(second, "foo")
+    FileUtils.mkdir_p(second_modpath)
+
+    mod = Puppet::Module.new("foo", nil, second_modpath)
+    mod.path.should == File.join(second, "foo")
+  end
+
   it "should be considered existent if it exists in at least one module path" do
     mod = Puppet::Module.new("foo")
     mod.expects(:path).returns "/a/foo"
