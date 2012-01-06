@@ -4,13 +4,18 @@ Puppet::Face.define(:module, '1.0.0') do
   action(:list) do
     summary "List modules"
     description <<-EOT
-      List modules and hopefully the classes they provide
+      List of modules and optionally classes, defined types and nodes they provide
     EOT
 
-    returns "list of modules and classes they provide"
+    returns "list of modules and optionally classes, defined types and nodes they provide"
 
     option "--[no-]verbose" do
-      summary "The version of the subcommand for which to show help."
+      summary "Whether or not to list module contents"
+    end
+
+    option "--environment ENVIRONMENT" do
+      default_to {'production'}
+      summary "Which environments modules to list.  Defaults to production"
     end
 
     examples <<-EOT
@@ -18,30 +23,32 @@ Puppet::Face.define(:module, '1.0.0') do
     EOT
 
     when_invoked do |options|
-      environment = Puppet::Node::Environment.new('production')
-      modules = environment.modules
+      environment = Puppet::Node::Environment.new(options[:environment])
 
-      module_contents = []
+      # This structure makes it easy to merge in content from known resource types
+      modules_map = environment.modules.map {|m| [m.name, {:module => m}]}
+      modules = Hash[modules_map]
+
       if options[:verbose]
         type_loader = Puppet::Parser::TypeLoader.new(environment)
         type_loader.import_all
-        module_contents = environment.known_resource_types.grouped_by_module
-      end
-
-      module_contents.each do |module_name, resource_types|
-        puts "Module #{module_name} contains:\n"
-        resource_types.each do |resource_type, names|
-          puts "  #{resource_type}"
-          names.each do |name|
-            puts "    #{name}"
-          end
+        module_content = environment.known_resource_types.grouped_by_module
+        modules.each do |name, value|
+          value.merge! module_content[name]
         end
       end
-      ''
+
+      modules
     end
 
-  when_rendering :console do |value|
-  end
+    when_rendering :console do |modules|
+      output = ''
+      modules.each do |name, content|
+        mod = content.delete(:module)
+        output << "#{name} (#{mod.version})\n"
+      end
+      output
+    end
 
   end
 end

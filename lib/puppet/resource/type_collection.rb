@@ -156,13 +156,13 @@ class Puppet::Resource::TypeCollection
     module_grouping = Hash.new {|h,k| h[k] = Hash.new{|h2,k2| h2[k2] = []}}
 
     hostclasses.each do |name, hc|
-      module_grouping[hc.module_name][:hostclasses] << name
+      module_grouping[hc.module_name][:hostclasses] << name unless name.empty?
     end
     definitions.each do |name, hc|
-      module_grouping[hc.module_name][:definitions] << name
+      module_grouping[hc.module_name][:definitions] << name unless name.empty?
     end
     nodes.each do |name, hc|
-      module_grouping[hc.module_name][:nodes] << name
+      module_grouping[hc.module_name][:nodes] << name unless name.empty?
     end
 
     module_grouping
