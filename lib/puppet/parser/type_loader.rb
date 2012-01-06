@@ -100,7 +100,7 @@ class Puppet::Parser::TypeLoader
     # And then load all files from each module, but (relying on system
     # behavior) only load files from the first module of a given name.  E.g.,
     # given first/foo and second/foo, only files from first/foo will be loaded.
-    Puppet::Module.find_modules(environment).each do |mod|
+    environment.modules.each do |mod|
       Find.find(File.join(mod.path, "manifests")) do |path|
         path = ::Pathname.new(path)
         if ['.rb', '.pp'].include?(path.extname)

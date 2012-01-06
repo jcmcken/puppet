@@ -185,11 +185,16 @@ describe Puppet::Node::Environment do
       env.module("one").should be_nil
     end
 
-    it "should be able to return its modules" do
-      Puppet::Node::Environment.new("testing").should respond_to(:modules)
-    end
-
     describe ".modules" do
+      it "should return an empty list if there are no modules" do
+        env = Puppet::Node::Environment.new("testing")
+        env.expects(:modulepath).at_least_once.returns %w{/a /b}
+        Dir.expects(:entries).with("/a").returns []
+        Dir.expects(:entries).with("/b").returns []
+
+        env.modules.should == []
+      end
+
       it "should return a module named for every directory in each module path" do
         env = Puppet::Node::Environment.new("testing")
         env.expects(:modulepath).at_least_once.returns %w{/a /b}

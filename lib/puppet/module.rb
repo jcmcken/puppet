@@ -20,20 +20,6 @@ class Puppet::Module
 
   FILETYPES = [MANIFESTS, FILES, TEMPLATES, PLUGINS]
 
-  def self.find_modules(environment)
-    module_names = []
-    # Collect the list of all known modules
-    environment.modulepath.each do |path|
-      Dir.chdir(path) do
-        Dir.glob("*").each do |dir|
-          next unless FileTest.directory?(dir)
-          module_names << dir
-        end
-      end
-    end
-    module_names.uniq.map { |mod_name| Puppet::Module.new(mod_name, environment) }
-  end
-
   # Find and return the +module+ that +path+ belongs to. If +path+ is
   # absolute, or if there is no module whose name is the first component
   # of +path+, return +nil+

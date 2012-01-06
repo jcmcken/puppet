@@ -611,38 +611,6 @@ describe Puppet::Module do
       @module.puppetversion.should == @data[:puppetversion]
     end
 
-
     it "should fail if the discovered name is different than the metadata name"
-  end
-
-  describe "#find_modules" do
-    include PuppetSpec::Files
-
-    let(:moduledir) { tmpdir('moduledir') }
-    let(:moduledir2) { tmpdir('moduledir2') }
-    let(:moduledirs) { [moduledir, moduledir2]}
-
-    it "should return empty module list if the modulepath is empty" do
-      environment = Puppet::Node::Environment.new('production')
-      environment.modulepath = moduledirs
-      Puppet::Module.find_modules(environment).should == []
-    end
-
-    it "should return all the uniq modules in the environment's module path" do
-      dummy_module_path = File.join(moduledir, 'dummymodule')
-      dummy_module_path2 = File.join(moduledir, 'dummymodule2')
-      dummy_module_path3 = File.join(moduledir2, 'dummymodule')
-      Dir.mkdir(dummy_module_path)
-      Dir.mkdir(dummy_module_path2)
-      Dir.mkdir(dummy_module_path3)
-
-      environment = Puppet::Node::Environment.new('production')
-      environment.modulepath = moduledirs
-      found_modules = Puppet::Module.find_modules(environment).map {|m| [m.name, m.environment, m.class]}
-      found_modules.should == [
-        ['dummymodule', environment, Puppet::Module],
-        ['dummymodule2', environment, Puppet::Module]
-      ]
-    end
   end
 end

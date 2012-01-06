@@ -9,17 +9,24 @@ Puppet::Face.define(:module, '1.0.0') do
 
     returns "list of modules and classes they provide"
 
+    option "--[no-]verbose" do
+      summary "The version of the subcommand for which to show help."
+    end
+
     examples <<-EOT
       something
     EOT
 
-    when_invoked do |*args|
+    when_invoked do |options|
       environment = Puppet::Node::Environment.new('production')
-      type_loader = Puppet::Parser::TypeLoader.new(environment)
-      type_loader.import_all
-      modules = Puppet::Module.find_modules(environment)
+      modules = environment.modules
 
-      module_contents = environment.known_resource_types.grouped_by_module
+      module_contents = []
+      if options[:verbose]
+        type_loader = Puppet::Parser::TypeLoader.new(environment)
+        type_loader.import_all
+        module_contents = environment.known_resource_types.grouped_by_module
+      end
 
       module_contents.each do |module_name, resource_types|
         puts "Module #{module_name} contains:\n"
@@ -32,6 +39,9 @@ Puppet::Face.define(:module, '1.0.0') do
       end
       ''
     end
+
+  when_rendering :console do |value|
+  end
 
   end
 end
