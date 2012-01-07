@@ -33,8 +33,8 @@ Puppet::Face.define(:module, '1.0.0') do
 
         if options[:verbose]
           # Need to have an environment with just this path as the modulepath
-          # Otherwise the first path overrides everything and we get the wrong
-          # data in known_resource_types
+          # Otherwise the first path overrides subsequent paths and we get the
+          # wrong data in known_resource_types
           e = Puppet::Node::Environment.new(path)
           e.modulepath = path
 
@@ -57,11 +57,15 @@ Puppet::Face.define(:module, '1.0.0') do
         output << "#{path}\n"
         modules.each do |name, content|
           mod = content.delete(:module)
-          output << "#{mod.name} (#{mod.version})\n"
+          output << " #{mod.name} (#{mod.version})\n"
+          output << "    dependencies\n"
+          mod.dependencies.each do |dependency|
+            output << "      #{dependency['name']} #{dependency['version_requirement']}\n"
+          end
           content.each do |content_type, content_values|
-            output << "  #{content_type}\n"
+            output << "    #{content_type}\n"
             content_values.each do |value|
-              output << "    #{value}\n"
+              output << "      #{value}\n"
             end
           end
         end
