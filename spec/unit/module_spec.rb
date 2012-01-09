@@ -142,6 +142,26 @@ describe Puppet::Module do
       mod.environment.expects(:module).with("baz").returns nil
 
       lambda { mod.validate_dependencies }.should raise_error(Puppet::Module::MissingModule)
+      mod.stubs(:dependencies).returns [
+        {
+          "version_requirement" => ">= 2.2.0",
+          "name"                => "satisfied"
+        },
+        {
+          "version_requirement" => ">= 2.2.0",
+          "name"                => "notsatisfied"
+        }
+      ]
+      satisfied = Puppet::Module.new("satisfied")
+      satisfied.version = "3.3.0"
+
+      mod.environment.expects(:module).with("satisfied").returns satisfied
+      mod.environment.expects(:module).with("notsatisfied").returns nil
+
+      mod.unsatisfied_dependencies.should == [[
+        Puppet::Module.new('notsatisfied', :environment => mod.environment),
+        'module not found'
+      ]]
     end
 
     it "should have valid dependencies when all dependencies are met" do
@@ -251,11 +271,11 @@ describe Puppet::Module do
   end
 
   it "should convert an environment name into an Environment instance" do
-    Puppet::Module.new("foo", "prod").environment.should be_instance_of(Puppet::Node::Environment)
+    Puppet::Module.new("foo", :environment => "prod").environment.should be_instance_of(Puppet::Node::Environment)
   end
 
   it "should accept an environment at initialization" do
-    Puppet::Module.new("foo", :prod).environment.name.should == :prod
+    Puppet::Module.new("foo", :environment => :prod).environment.name.should == :prod
   end
 
   it "should use the default environment if none is provided" do
@@ -265,7 +285,7 @@ describe Puppet::Module do
 
   it "should use any provided Environment instance" do
     env = Puppet::Node::Environment.new
-    Puppet::Module.new("foo", env).environment.should equal(env)
+    Puppet::Module.new("foo", :environment => env).environment.should equal(env)
   end
 
   it "should return the path to the first found instance in its environment's module paths as its path" do
@@ -302,6 +322,24 @@ describe Puppet::Module do
     mod = Puppet::Module.new("foo")
     mod.should be_exist
     mod.path.should == modpath
+  end
+
+  it "should be able to find itself in a directory other than the first directory in the module path even when in the first directory" do
+    dir = tmpdir("deep_path")
+    first = File.join(dir, "first")
+    second = File.join(dir, "second")
+
+    FileUtils.mkdir_p(first)
+    FileUtils.mkdir_p(second)
+    Puppet[:modulepath] = "#{first}#{File::PATH_SEPARATOR}#{second}"
+
+    first_modpath = File.join(first, "foo")
+    FileUtils.mkdir_p(first_modpath)
+    second_modpath = File.join(second, "foo")
+    FileUtils.mkdir_p(second_modpath)
+
+    mod = Puppet::Module.new("foo", :path => second_modpath)
+    mod.path.should == File.join(second, "foo")
   end
 
   it "should be considered existent if it exists in at least one module path" do

@@ -169,7 +169,7 @@ describe Puppet::Node::Environment do
       env = Puppet::Node::Environment.new("testing")
 
       mod = mock 'module'
-      Puppet::Module.expects(:new).with("one", env).returns mod
+      Puppet::Module.expects(:new).with("one", :environment => env).returns mod
       mod.expects(:exist?).returns true
 
       env.module("one").should equal(mod)
@@ -179,7 +179,7 @@ describe Puppet::Node::Environment do
       env = Puppet::Node::Environment.new("testing")
 
       mod = mock 'module'
-      Puppet::Module.expects(:new).with("one", env).returns mod
+      Puppet::Module.expects(:new).with("one", :environment => env).returns mod
       mod.expects(:exist?).returns false
 
       env.module("one").should be_nil
