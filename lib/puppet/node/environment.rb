@@ -127,7 +127,7 @@ class Puppet::Node::Environment
     end
     modules_by_path
   end
- 
+
   def to_s
     name.to_s
   end

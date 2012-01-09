@@ -152,6 +152,22 @@ class Puppet::Resource::TypeCollection
     @watched_files.include?(file)
   end
 
+  def grouped_by_module
+    module_grouping = Hash.new {|h,k| h[k] = Hash.new{|h2,k2| h2[k2] = []}}
+
+    hostclasses.each do |name, hc|
+      module_grouping[hc.module_name][:hostclasses] << name unless name.empty?
+    end
+    definitions.each do |name, hc|
+      module_grouping[hc.module_name][:definitions] << name unless name.empty?
+    end
+    nodes.each do |name, hc|
+      module_grouping[hc.module_name][:nodes] << name unless name.empty?
+    end
+
+    module_grouping
+  end
+
   private
 
   # Return a list of all possible fully-qualified names that might be

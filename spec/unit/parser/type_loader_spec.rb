@@ -103,6 +103,9 @@ describe Puppet::Parser::TypeLoader do
       FileUtils.mkdir_p(@modulebase2)
 
       Puppet[:modulepath] = "#{@modulebase1}#{File::PATH_SEPARATOR}#{@modulebase2}"
+
+      @module1 = mk_module(@modulebase1, "one")
+      @module2 = mk_module(@modulebase2, "two")
     end
 
     def mk_module(basedir, name)
@@ -134,9 +137,6 @@ describe Puppet::Parser::TypeLoader do
     end
 
     it "should load all puppet manifests from all modules in the specified environment" do
-      @module1 = mk_module(@modulebase1, "one")
-      @module2 = mk_module(@modulebase2, "two")
-
       mk_manifests(@modulebase1, @module1, "puppet", %w{a b})
       mk_manifests(@modulebase2, @module2, "puppet", %w{c d})
 
@@ -149,9 +149,6 @@ describe Puppet::Parser::TypeLoader do
     end
 
     it "should load all ruby manifests from all modules in the specified environment" do
-      @module1 = mk_module(@modulebase1, "one")
-      @module2 = mk_module(@modulebase2, "two")
-
       mk_manifests(@modulebase1, @module1, "ruby", %w{a b})
       mk_manifests(@modulebase2, @module2, "ruby", %w{c d})
 
@@ -164,13 +161,13 @@ describe Puppet::Parser::TypeLoader do
     end
 
     it "should not load manifests from duplicate modules later in the module path" do
-      @module1 = mk_module(@modulebase1, "one")
+      module1 = mk_module(@modulebase1, "one")
 
       # duplicate
-      @module2 = mk_module(@modulebase2, "one")
+      module2 = mk_module(@modulebase2, "one")
 
-      mk_manifests(@modulebase1, @module1, "puppet", %w{a})
-      mk_manifests(@modulebase2, @module2, "puppet", %w{c})
+      mk_manifests(@modulebase1, module1, "puppet", %w{a})
+      mk_manifests(@modulebase2, module2, "puppet", %w{c})
 
       @loader.import_all
 
@@ -178,14 +175,20 @@ describe Puppet::Parser::TypeLoader do
     end
 
     it "should load manifests from subdirectories" do
-      @module1 = mk_module(@modulebase1, "one")
-
       mk_manifests(@modulebase1, @module1, "puppet", %w{a a/b a/b/c})
 
       @loader.import_all
 
       @loader.environment.known_resource_types.hostclass("one::a::b").should be_instance_of(Puppet::Resource::Type)
       @loader.environment.known_resource_types.hostclass("one::a::b::c").should be_instance_of(Puppet::Resource::Type)
+    end
+
+    it "should have the module_name correctly set on the imported resources" do
+      mk_manifests(@modulebase1, @module1, "puppet", %w{a})
+
+      @loader.import_all
+
+      @loader.environment.known_resource_types.hostclass("one::a").module_name.should == 'one'
     end
   end
 
