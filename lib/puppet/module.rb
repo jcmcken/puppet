@@ -1,4 +1,5 @@
 require 'puppet/util/logging'
+require 'semver'
 
 # Support for modules
 class Puppet::Module
@@ -30,6 +31,7 @@ class Puppet::Module
   attr_reader :name, :environment
   attr_writer :environment
 
+  attr_accessor :dependencies
   attr_accessor :source, :author, :version, :license, :puppetversion, :summary, :description, :project_page
 
   def has_metadata?
@@ -56,7 +58,6 @@ class Puppet::Module
     load_metadata if has_metadata?
 
     validate_puppet_version
-    validate_dependencies
   end
 
   FILETYPES.each do |type|
@@ -107,7 +108,7 @@ class Puppet::Module
 
   def load_metadata
     data = PSON.parse File.read(metadata_file)
-    [:source, :author, :version, :license, :puppetversion].each do |attr|
+    [:source, :author, :version, :license, :puppetversion, :dependencies].each do |attr|
       unless value = data[attr.to_s]
         unless attr == :puppetversion
           raise MissingMetadata, "No #{attr} module metadata provided for #{self.name}"
@@ -154,18 +155,44 @@ class Puppet::Module
     result
   end
 
-  def validate_dependencies
-    return unless defined?(@requires)
+  def unsatisfied_dependencies
+    unsatisfied_dependencies = []
+    satisfied_dependencies = []
 
-    @requires.each do |name, version|
+    return [] unless dependencies
+
+    dependencies.each do |dependency|
+      name = dependency['name']
+      version_string = dependency['version_requirement']
+
+      equality, version = version_string ? version_string.split("\s") : [nil, nil]
+
       unless mod = environment.module(name)
-        raise MissingModule, "Missing module #{name} required by #{self.name}"
+        unsatisfied_dependencies << [Puppet::Module.new(name, :environment => environment), 'module not found']
+        next
       end
 
-      if version and mod.version != version
-        raise IncompatibleModule, "Required module #{name} is version #{mod.version} but #{self.name} requires #{version}"
+      if version && !mod.version
+        unsatisfied_dependencies << [mod, "dependency doesn't have a version"]
+        next
+      end
+
+      if version
+        begin
+          required_version_semver = SemVer.new(version)
+          actual_version_semver = SemVer.new(mod.version)
+        rescue ArgumentError
+          unsatisfied_dependencies << [mod, "version not specified as a semantic version"]
+          next
+        end
+
+        if !actual_version_semver.send(equality, required_version_semver)
+          unsatisfied_dependencies << [mod, "version mismatch"]
+          next
+        end
       end
     end
+    unsatisfied_dependencies
   end
 
   def validate_puppet_version
@@ -192,5 +219,10 @@ class Puppet::Module
 
   def assert_validity
     raise InvalidName, "Invalid module name; module names must be alphanumeric (plus '-'), not '#{name}'" unless name =~ /^[-\w]+$/
+  end
+
+  # This is just for testing right now and probably needs a better definition
+  def ==(other)
+    self.name == other.name && self.version == other.version
   end
 end
