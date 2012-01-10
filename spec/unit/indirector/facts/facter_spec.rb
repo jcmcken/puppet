@@ -108,30 +108,18 @@ describe Puppet::Node::Facts::Facter do
   end
 
   describe Puppet::Node::Facts::Facter, "when loading fact plugins from disk" do
-    it "should load each directory in the Fact path" do
-      Puppet.settings.stubs(:value).returns "foo"
-      Puppet.settings.expects(:value).with(:factpath).returns("one#{File::PATH_SEPARATOR}two")
+    it "should load all facts from the uniq factpath and modules directories" do
+      Puppet.settings[:factpath] = "fact1#{File::PATH_SEPARATOR}fact2#{File::PATH_SEPARATOR}fact1"
 
-      Puppet::Node::Facts::Facter.expects(:load_facts_in_dir).with("one")
-      Puppet::Node::Facts::Facter.expects(:load_facts_in_dir).with("two")
+      Puppet.settings[:modulepath] = "one#{File::PATH_SEPARATOR}two"
+      Dir.expects(:glob).with("one/*/lib/facter").returns %w{lib1 lib2}
+      Dir.expects(:glob).with("two/*/lib/facter").returns %w{lib2 lib3 lib4}
+      Dir.expects(:glob).with("one/*/plugins/facter").returns []
+      Dir.expects(:glob).with("two/*/plugins/facter").returns %w{plug1 plug2}
 
-      Puppet::Node::Facts::Facter.load_fact_plugins
-    end
-
-    it "should load all facts from the modules" do
-      Puppet.settings.stubs(:value).returns "foo"
-      Puppet::Node::Facts::Facter.stubs(:load_facts_in_dir)
-
-      Puppet.settings.expects(:value).with(:modulepath).returns("one#{File::PATH_SEPARATOR}two")
-
-      Dir.stubs(:glob).returns []
-      Dir.expects(:glob).with("one/*/lib/facter").returns %w{oneA oneB}
-      Dir.expects(:glob).with("two/*/lib/facter").returns %w{twoA twoB}
-
-      Puppet::Node::Facts::Facter.expects(:load_facts_in_dir).with("oneA")
-      Puppet::Node::Facts::Facter.expects(:load_facts_in_dir).with("oneB")
-      Puppet::Node::Facts::Facter.expects(:load_facts_in_dir).with("twoA")
-      Puppet::Node::Facts::Facter.expects(:load_facts_in_dir).with("twoB")
+      %w{fact1 fact2 lib1 lib2 lib3 lib4 plug1 plug2}.each do |path|
+        Puppet::Node::Facts::Facter.expects(:load_facts_in_dir).with(path)
+      end
 
       Puppet::Node::Facts::Facter.load_fact_plugins
     end
