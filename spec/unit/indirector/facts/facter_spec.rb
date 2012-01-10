@@ -28,8 +28,8 @@ describe Puppet::Node::Facts::Facter do
 end
 
 describe Puppet::Node::Facts::Facter do
+  let(:facter) { Puppet::Node::Facts::Facter.new }
   before :each do
-    @facter = Puppet::Node::Facts::Facter.new
     Facter.stubs(:to_hash).returns({})
     @name = "me"
     @request = stub 'request', :key => @name
@@ -37,16 +37,16 @@ describe Puppet::Node::Facts::Facter do
 
   describe Puppet::Node::Facts::Facter, " when finding facts" do
     it "should return a Facts instance" do
-      @facter.find(@request).should be_instance_of(Puppet::Node::Facts)
+      facter.find(@request).should be_instance_of(Puppet::Node::Facts)
     end
 
     it "should return a Facts instance with the provided key as the name" do
-      @facter.find(@request).name.should == @name
+      facter.find(@request).name.should == @name
     end
 
     it "should return the Facter facts as the values in the Facts instance" do
       Facter.expects(:to_hash).returns("one" => "two")
-      facts = @facter.find(@request)
+      facts = facter.find(@request)
       facts.values["one"].should == "two"
     end
 
@@ -55,7 +55,7 @@ describe Puppet::Node::Facts::Facter do
       Puppet::Node::Facts.expects(:new).returns facts
       facts.expects(:add_local_facts)
 
-      @facter.find(@request)
+      facter.find(@request)
     end
 
     it "should convert all facts into strings" do
@@ -63,7 +63,7 @@ describe Puppet::Node::Facts::Facter do
       Puppet::Node::Facts.expects(:new).returns facts
       facts.expects(:stringify)
 
-      @facter.find(@request)
+      facter.find(@request)
     end
 
     it "should call the downcase hook" do
@@ -71,21 +71,21 @@ describe Puppet::Node::Facts::Facter do
       Puppet::Node::Facts.expects(:new).returns facts
       facts.expects(:downcase_if_necessary)
 
-      @facter.find(@request)
+      facter.find(@request)
     end
   end
 
   describe Puppet::Node::Facts::Facter, " when saving facts" do
 
     it "should fail" do
-      proc { @facter.save(@facts) }.should raise_error(Puppet::DevError)
+      proc { facter.save(@facts) }.should raise_error(Puppet::DevError)
     end
   end
 
   describe Puppet::Node::Facts::Facter, " when destroying facts" do
 
     it "should fail" do
-      proc { @facter.destroy(@facts) }.should raise_error(Puppet::DevError)
+      proc { facter.destroy(@facts) }.should raise_error(Puppet::DevError)
     end
   end
 
