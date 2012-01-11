@@ -27,9 +27,8 @@ class Puppet::Node::Facts::Facter < Puppet::Indirector::Code
       Dir.glob("*.rb").each do |file|
         fqfile = ::File.join(dir, file)
         begin
-          Puppet.info "Loading facts in #{::File.basename(file.sub(".rb",''))}"
           Timeout::timeout(self.timeout) do
-            load file
+          Puppet.info "Loading facts in #{fqfile}" if require file
           end
         rescue SystemExit,NoMemoryError
           raise

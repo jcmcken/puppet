@@ -45,7 +45,6 @@ describe Puppet::Configurer::FactHandler do
 
   describe "when finding facts" do
     before :each do
-      @facthandler.stubs(:reload_facter)
       Puppet::Node::Facts.indirection.terminus_class = :memory
     end
 
@@ -79,8 +78,6 @@ describe Puppet::Configurer::FactHandler do
     end
 
     it "should reload Facter before finding facts" do
-      @facthandler.expects(:reload_facter)
-
       @facthandler.find_facts
     end
 
@@ -144,28 +141,5 @@ describe Puppet::Configurer::FactHandler do
     @facthandler.expects(:find_facts).returns facts
 
     @facthandler.facts_for_uploading
-  end
-
-  describe "when reloading Facter" do
-    before do
-      Facter.stubs(:clear)
-      Facter.stubs(:load)
-      Facter.stubs(:loadfacts)
-    end
-
-    it "should clear Facter" do
-      Facter.expects(:clear)
-      @facthandler.reload_facter
-    end
-
-    it "should load all Facter facts" do
-      Facter.expects(:loadfacts)
-      @facthandler.reload_facter
-    end
-
-    it "should use the Facter terminus load all Puppet Fact plugins" do
-      Puppet::Node::Facts::Facter.expects(:load_fact_plugins)
-      @facthandler.reload_facter
-    end
   end
 end
