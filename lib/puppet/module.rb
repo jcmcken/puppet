@@ -47,7 +47,7 @@ class Puppet::Module
     @name = name
     @path = options[:path]
 
-    assert_validity
+    #assert_validity
 
     if options[:environment].is_a?(Puppet::Node::Environment)
       @environment = options[:environment]
@@ -155,6 +155,18 @@ class Puppet::Module
     result
   end
 
+  def dependencies_as_modules
+    dependent_modules = []
+
+    dependencies.each do |dep|
+      dep_name = dep["name"].split('/')[1]
+      found_module = environment.module(dep_name)
+      dependent_modules << found_module if found_module
+    end
+
+    dependent_modules
+  end
+
   def unsatisfied_dependencies
     unsatisfied_dependencies = []
     satisfied_dependencies = []
@@ -162,7 +174,7 @@ class Puppet::Module
     return [] unless dependencies
 
     dependencies.each do |dependency|
-      name = dependency['name']
+      name = dependency['name'].split('/')[1]
       version_string = dependency['version_requirement']
 
       equality, version = version_string ? version_string.split("\s") : [nil, nil]

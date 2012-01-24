@@ -16,6 +16,10 @@ Puppet::Face.define(:module, '1.0.0') do
       summary "Which directories to look for modules in"
     end
 
+    option "--tree" do
+      summary "Whether to show dependencies as a tree view"
+    end
+
     examples <<-EOT
       List installed modules:
 
@@ -45,18 +49,43 @@ Puppet::Face.define(:module, '1.0.0') do
       Puppet[:modulepath] = options[:modulepath] if options[:modulepath]
       environment = Puppet::Node::Environment.new(options[:env])
 
-      environment.modules_by_path
+#     {
+#       mod1 => [ mod2, mod3 ]
+#       mod3 => { mod4 }
+#     }
+
+      modules_by_path = environment.modules_by_path
+      # There should be a better way to get options to the rendering method
+      modules_by_path[:options] = options
+      modules_by_path
     end
 
     when_rendering :console do |modules_by_path|
+      options = modules_by_path.delete(:options)
       output = ''
+
+      mods_tree_deps = {}
       modules_by_path.each do |path, modules|
         output << "#{path}\n"
         modules.each do |mod|
-          version_string = mod.version ? "(#{mod.version})" : ''
+          version_string = mod.version ? "(#{mod.version})" : '???'
           output << "  #{mod.name} #{version_string}\n"
+
+          if options[:tree]
+            mod.dependencies_as_modules.each do |dep_mod|
+              dep_version_string = dep_mod.version ? "(#{dep_mod.version})" : '???'
+              path_out = File.dirname(dep_mod.path) == path ? '' : File.dirname(dep_mod.path)
+              output << "    #{dep_mod.name} #{dep_version_string} #{path_out}\n"
+
+              dep_mod.unsatisfied_dependencies.each do |unsat_dep|
+                unsat_mod, reason = unsat_dep
+                output << "    #{unsat_mod.name} unsatisfied because #{reason}\n"
+              end
+            end
+          end
         end
       end
+
       output
     end
 
