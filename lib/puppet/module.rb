@@ -31,7 +31,7 @@ class Puppet::Module
   attr_reader :name, :environment
   attr_writer :environment
 
-  attr_accessor :dependencies
+  attr_accessor :dependencies, :forge_name
   attr_accessor :source, :author, :version, :license, :puppetversion, :summary, :description, :project_page
 
   def has_metadata?
@@ -47,7 +47,7 @@ class Puppet::Module
     @name = name
     @path = options[:path]
 
-    assert_validity
+    #assert_validity
 
     if options[:environment].is_a?(Puppet::Node::Environment)
       @environment = options[:environment]
@@ -108,6 +108,7 @@ class Puppet::Module
 
   def load_metadata
     data = PSON.parse File.read(metadata_file)
+    @forge_name = data['name']
     [:source, :author, :version, :license, :puppetversion, :dependencies].each do |attr|
       unless value = data[attr.to_s]
         unless attr == :puppetversion
@@ -153,6 +154,22 @@ class Puppet::Module
     result = "Module #{name}"
     result += "(#{path})" if path
     result
+  end
+
+  def dependencies_as_modules
+    dependent_modules = []
+
+    dependencies and dependencies.each do |dep|
+      author, dep_name = dep["name"].split('/')
+      found_module = environment.module(dep_name)
+      dependent_modules << found_module if found_module
+    end
+
+    dependent_modules
+  end
+
+  def required_by
+    environment.module_dependencies[self.name]
   end
 
   def unsatisfied_dependencies
