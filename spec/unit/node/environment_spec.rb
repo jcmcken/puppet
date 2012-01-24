@@ -175,7 +175,7 @@ describe Puppet::Node::Environment do
       env.module("one").should be_nil
     end
 
-    describe ".modules_by_path" do
+    describe "module stuff" do
       before do
         dir = tmpdir("deep_path")
 
@@ -187,23 +187,45 @@ describe Puppet::Node::Environment do
         FileUtils.mkdir_p(@second)
       end
 
-      it "should return an empty list if there are no modules" do
-        env.modules_by_path.should == {
-          @first  => [],
-          @second => []
-        }
+      describe "#modules_by_path" do
+
+        it "should return an empty list if there are no modules" do
+          env.modules_by_path.should == {
+            @first  => [],
+            @second => []
+          }
+        end
+
+        it "should include modules even if they exist in multiple dirs in the modulepath" do
+          modpath1 = File.join(@first, "foo")
+          FileUtils.mkdir_p(modpath1)
+          modpath2 = File.join(@second, "foo")
+          FileUtils.mkdir_p(modpath2)
+
+          env.modules_by_path.should == {
+            @first  => [Puppet::Module.new('foo', :environment => env, :path => modpath1)],
+            @second => [Puppet::Module.new('foo', :environment => env, :path => modpath2)]
+          }
+        end
       end
 
-      it "should include modules even if they exist in multiple dirs in the modulepath" do
-        modpath1 = File.join(@first, "foo")
-        FileUtils.mkdir_p(modpath1)
-        modpath2 = File.join(@second, "foo")
-        FileUtils.mkdir_p(modpath2)
+      describe "#module_dependencies" do
+        it "should return a list of what modules depend on other modules" do
+          foo = Puppet::Module.new('foo')
+          foo.stubs(:dependencies).returns([{ 'name' => 'puppetlabs/bar', "version_requirement" => ">= 2.0.0" }])
+          bar = Puppet::Module.new('bar')
+          bar.stubs(:dependencies).returns([{ 'name' => 'puppetlabs/foo', "version_requirement" => "<= 2.0.0" }])
+          baz = Puppet::Module.new('baz')
+          baz.stubs(:dependencies).returns([{ 'name' => 'puppetlabs/bar', "version_requirement" => "= 2.0.0" }])
 
-        env.modules_by_path.should == {
-          @first  => [Puppet::Module.new('foo', :environment => env, :path => modpath1)],
-          @second => [Puppet::Module.new('foo', :environment => env, :path => modpath2)]
-        }
+          env.stubs(:modules).returns [foo, bar, baz]
+
+          env.module_dependencies.should == {
+            'foo' => { :required_by => ['bar'] },
+            'bar' => { :required_by => ['foo', 'baz'] },
+            'baz' => { :required_by => [] }
+          }
+        end
       end
     end
 

@@ -16,6 +16,10 @@ Puppet::Face.define(:module, '1.0.0') do
       summary "Which directories to look for modules in"
     end
 
+    option "--tree" do
+      summary "Whether to show dependencies as a tree view"
+    end
+
     examples <<-EOT
       List installed modules:
 
@@ -67,13 +71,51 @@ Puppet::Face.define(:module, '1.0.0') do
 
       modules_by_path.each do |path, modules|
         output << "#{path}\n"
-        modules.each do |mod|
-          version_string = mod.version ? "(#{mod.version})" : ''
-          output << "  #{mod.name} #{version_string}\n"
+        if options[:tree]
+          # The modules with fewest things depending on them # will be the
+          # parent of the tree.  Can't assume to start with 0 dependencies since
+          # dependencies may be cyclical
+          modules_by_num_requires = modules.sort_by {|m| m.required_by.size}
+
+          while !modules_by_num_requires.empty?
+            mod = modules_by_num_requires.shift
+
+            indent_level = 0
+            tree_print(mod, modules_by_num_requires, [], output, indent_level)
+          end
+        else
+          modules.each do |mod|
+            output << print(mod)
+          end
         end
       end
+
       output
     end
 
+  end
+
+  def tree_print(mod, modules_left_to_print, ancestors, output, indent_level)
+    output << print(mod, indent_level)
+
+    mod.dependencies_as_modules.each do |dep_mod|
+      # if module has already been deleted from list
+      # it means we have a cycle and need to short circuit
+      #
+      # However, this means sometimes modules won't print
+      # when they're depended upon by more than one
+      # module
+      modules_left_to_print.delete(dep_mod)
+      next if ancestors.include? dep_mod
+
+      tree_print(dep_mod, modules_left_to_print, ancestors.dup << mod, output, indent_level + 1)
+    end
+  end
+
+  def print(mod, indent_level = 0)
+    indent = '  ' * indent_level
+    version_string = mod.version ? "(#{mod.version})" : '(???)'
+    unmet_dependency = mod.unsatisfied_dependencies.empty? ? '' : 'UNMET DEPENDENCY '
+    "#{indent}#{unmet_dependency}#{mod.forge_name || mod.name} #{version_string}\n"
   end
 end
