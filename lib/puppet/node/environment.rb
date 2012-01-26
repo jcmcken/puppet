@@ -163,6 +163,8 @@ class Puppet::Node::Environment
     self.to_s.to_zaml(z)
   end
 
+  private
+
   def validate_dirs(dirs)
     dirs.collect do |dir|
       unless Puppet::Util.absolute_path?(dir)
@@ -174,8 +176,6 @@ class Puppet::Node::Environment
       Puppet::Util.absolute_path?(p) && FileTest.directory?(p)
     end
   end
-
-  private
 
   def perform_initial_import
     return empty_parse_result if Puppet.settings[:ignoreimport]

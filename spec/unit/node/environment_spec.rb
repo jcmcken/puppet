@@ -124,15 +124,22 @@ describe Puppet::Node::Environment do
 
   describe "when validating modulepath or manifestdir directories" do
     before :each do
-      @path_one = make_absolute('/one')
-      @path_two = make_absolute('/two')
+      path_one = tmpdir("path_one")
+      path_two = tmpdir("path_one")
+      nonexistant_path = tmpdir("nonex")
+      file_path = tmpfile("imafile")
+      sep = File::PATH_SEPARATOR
+      Puppet[:modulepath] = "#{path_one}#{sep}#{@second}"
     end
 
-    it "should not return non-directories" do
+    it "should not return non-directories and warn" do
       FileTest.expects(:directory?).with(@path_one).returns true
       FileTest.expects(:directory?).with(@path_two).returns false
 
       env.validate_dirs([@path_one, @path_two]).should == [@path_one]
+    end
+
+    it "should warn when modulepath dirs don't exist" do
     end
 
     it "should use the current working directory to fully-qualify unqualified paths" do

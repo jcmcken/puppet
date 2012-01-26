@@ -106,6 +106,10 @@ class Puppet::Module
     @license_file = File.join(path, "License")
   end
 
+  def metadata
+    PSON.parse File.read(metadata_file)
+  end
+
   def load_metadata
     data = PSON.parse File.read(metadata_file)
     @forge_name = data['name']
@@ -158,7 +162,6 @@ class Puppet::Module
 
   def dependencies_as_modules
     dependent_modules = []
-
     dependencies and dependencies.each do |dep|
       author, dep_name = dep["name"].split('/')
       found_module = environment.module(dep_name)
