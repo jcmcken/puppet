@@ -7,6 +7,9 @@ module Puppet::Module::Tool
     class Installer < Application
 
       def initialize(name, options = {})
+        environment = Puppet::Node::Environment.new(Puppet.settings[:environment])
+        @installed_modules = environment.modules
+
         if File.exist?(name)
           if File.directory?(name)
             # TODO Unify this handling with that of Unpacker#check_clobber!
@@ -31,16 +34,23 @@ module Puppet::Module::Tool
         options[:force]
       end
 
+      def install(remote_file)
+        begin
+          cache_path = repository.retrieve(remote_file)
+        rescue OpenURI::HTTPError => e
+          raise RuntimeError, "Could not install module: #{e.message}"
+        end
+        module_dir = Unpacker.run(cache_path, options)
+      end
+
       def run
         case @source
         when :repository
           if match['file']
-            begin
-              cache_path = repository.retrieve(match['file'])
-            rescue OpenURI::HTTPError => e
-              raise RuntimeError, "Could not install module: #{e.message}"
+            dep_info = dependency_info(@username, @module_name, @match["version"])
+            ([match] + dep_info).each do |mod|
+              install(mod['file'])
             end
-            module_dir = Unpacker.run(cache_path, options)
           else
             raise RuntimeError, "Malformed response from module repository."
           end
@@ -66,18 +76,57 @@ module Puppet::Module::Tool
 
       private
 
+      # build a data structure that will allows to resolve constraints
+      def deps(mods)
+        deps = []
+        mods.each do |mod|
+          require 'ruby-debug'; debugger; 1;
+        end
+      end
+
+      def dependency_info(author, mod_name, version)
+        url = repository.uri + "/#{author}/#{mod_name}/#{version}/json"
+        deps(@installed_modules)
+        raw_result = read_match(url)
+        mod_version_info = PSON.parse(raw_result)
+        dependencies = mod_version_info['metadata']['dependencies']
+        dep_info = []
+        dependencies.each do |dep|
+          dep_author, dep_name = dep['name'].split('/')
+          version_req = dep['version_requirement']
+          dep_installed = @installed_modules.find {|mod| mod.name == dep_name}
+          
+          if dep_installed
+            # if dep_installed.satisfy(version_req)
+            #   next
+            # else
+            #   warn "already installed mod #{dep_name} doesn't satisfy
+            # end
+          else
+            dep_info << get_remote_module_install_info(dep_author, dep_name, version_req)
+          end
+
+        end
+
+        dep_info
+      end
+
+      def get_remote_module_install_info(author, name, version_req)
+        url = repository.uri + "/users/#{author}/modules/#{name}/releases/find.json"
+        if version_req
+          url.query = "version=#{URI.escape(version_req)}"
+        end
+        begin
+          raw_result = read_match(url)
+        rescue => e
+          raise ArgumentError, "Could not find a release for this module (#{e.message})"
+        end
+        PSON.parse(raw_result)
+      end
+
       def match
         return @match ||= begin
-          url = repository.uri + "/users/#{@username}/modules/#{@module_name}/releases/find.json"
-          if @version_requirement
-            url.query = "version=#{URI.escape(@version_requirement)}"
-          end
-          begin
-            raw_result = read_match(url)
-          rescue => e
-            raise ArgumentError, "Could not find a release for this module (#{e.message})"
-          end
-          @match = PSON.parse(raw_result)
+          @match = get_remote_module_install_info(@username, @module_name, @version_requirement)
         end
       end
 
