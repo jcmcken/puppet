@@ -136,13 +136,11 @@ describe Puppet::Type.type(:file).attrclass(:source) do
       lambda { @source.metadata }.should raise_error(ArgumentError)
     end
 
-    it "should fail if no specified sources can be found" do
+    it "should be nil if no specified sources can be found" do
       @source = source.new(:resource => @resource, :value => @foobar)
       Puppet::FileServing::Metadata.indirection.expects(:find).with(@foobar_uri).returns nil
 
-      @source.expects(:fail).raises RuntimeError
-
-      lambda { @source.metadata }.should raise_error(RuntimeError)
+      @source.metadata.should be_nil
     end
   end
 
@@ -162,10 +160,11 @@ describe Puppet::Type.type(:file).attrclass(:source) do
       Puppet.features.stubs(:root?).returns true
     end
 
-    it "should fail if there is no metadata" do
+    it "should not modify the resource if there is no metadata" do
+      orig_resource = @resource.dup
       @source.stubs(:metadata).returns nil
-      @source.expects(:devfail).raises ArgumentError
-      lambda { @source.copy_source_values }.should raise_error(ArgumentError)
+      @source.copy_source_values
+      orig_resource.should == @resource
     end
 
     it "should set :ensure to the file type" do

@@ -122,7 +122,7 @@ module Puppet
 
     # Copy the values from the source to the resource.  Yay.
     def copy_source_values
-      devfail "Somehow got asked to copy source values without any metadata" unless metadata
+      return unless metadata
 
       # Take each of the stats and set them as states on the local file
       # if a value has not already been provided.
@@ -176,7 +176,6 @@ module Puppet
           fail detail, "Could not retrieve file metadata for #{source}: #{detail}"
         end
       end
-      fail "Could not retrieve information from environment #{Puppet[:environment]} source(s) #{value.join(", ")}" unless @metadata
       @metadata
     end
 
