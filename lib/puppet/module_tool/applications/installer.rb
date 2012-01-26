@@ -77,21 +77,32 @@ module Puppet::Module::Tool
       private
 
       # build a data structure that will allows to resolve constraints
-      def deps(mods)
-        deps = []
+      def local_deps(mods)
+        deps = {}
         mods.each do |mod|
-          require 'ruby-debug'; debugger; 1;
+          deps[mod.metadata['name']] ||= {}
+          deps[mod.metadata['name']][:versions] ||= []
+          deps[mod.metadata['name']][:versions] << mod.version
+          deps[mod.metadata['name']][:deps_on_me] ||= []
+
+          mod.dependencies.each do |mod_dep|
+            dep_name = mod_dep['name'].gsub('/', '-')
+            deps[dep_name] ||= {}
+            deps[dep_name][:deps_on_me] ||= []
+            deps[dep_name][:deps_on_me] << ["#{mod.metadata['name']}@#{mod.version}", mod_dep['version_requirement']]
+          end
         end
       end
 
       def dependency_info(author, mod_name, version)
         url = repository.uri + "/#{author}/#{mod_name}/#{version}/json"
-        deps(@installed_modules)
+        local_deps(@installed_modules)
         raw_result = read_match(url)
         mod_version_info = PSON.parse(raw_result)
         dependencies = mod_version_info['metadata']['dependencies']
         dep_info = []
-        dependencies.each do |dep|
+        while !dependencies.empty?
+          dep = dependencies.pop
           dep_author, dep_name = dep['name'].split('/')
           version_req = dep['version_requirement']
           dep_installed = @installed_modules.find {|mod| mod.name == dep_name}
@@ -103,7 +114,9 @@ module Puppet::Module::Tool
             #   warn "already installed mod #{dep_name} doesn't satisfy
             # end
           else
-            dep_info << get_remote_module_install_info(dep_author, dep_name, version_req)
+            remote_info = get_remote_module_install_info(dep_author, dep_name, version_req)
+            require 'ruby-debug'; debugger; 1;
+            dep_info << remote_info
           end
 
         end
