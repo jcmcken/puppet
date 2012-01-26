@@ -150,10 +150,11 @@ describe Puppet::Node::Facts::Facter do
       Dir.expects(:glob).with("one/*/lib/facter").returns %w{oneA oneB}
       Dir.expects(:glob).with("two/*/lib/facter").returns %w{twoA twoB}
 
-      Puppet::Node::Facts::Facter.expects(:load_facts_in_dir).with("oneA")
-      Puppet::Node::Facts::Facter.expects(:load_facts_in_dir).with("oneB")
-      Puppet::Node::Facts::Facter.expects(:load_facts_in_dir).with("twoA")
-      Puppet::Node::Facts::Facter.expects(:load_facts_in_dir).with("twoB")
+      load_order = sequence('load order')
+      Puppet::Node::Facts::Facter.expects(:load_facts_in_dir).with("twoA").in_sequence(load_order)
+      Puppet::Node::Facts::Facter.expects(:load_facts_in_dir).with("twoB").in_sequence(load_order)
+      Puppet::Node::Facts::Facter.expects(:load_facts_in_dir).with("oneA").in_sequence(load_order)
+      Puppet::Node::Facts::Facter.expects(:load_facts_in_dir).with("oneB").in_sequence(load_order)
 
       Puppet::Node::Facts::Facter.load_fact_plugins
     end
