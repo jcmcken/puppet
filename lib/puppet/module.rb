@@ -106,8 +106,12 @@ class Puppet::Module
     @license_file = File.join(path, "License")
   end
 
+  def metadata
+    PSON.parse File.read(metadata_file)
+  end
+
   def load_metadata
-    data = PSON.parse File.read(metadata_file)
+    data = metadata
     [:source, :author, :version, :license, :puppetversion, :dependencies].each do |attr|
       unless value = data[attr.to_s]
         unless attr == :puppetversion

@@ -175,6 +175,10 @@ describe Puppet::Node::Environment do
       env.module("one").should be_nil
     end
 
+    describe "module_dependencies" do
+
+    end
+
     describe ".modules_by_path" do
       before do
         dir = tmpdir("deep_path")

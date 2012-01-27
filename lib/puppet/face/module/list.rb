@@ -65,23 +65,18 @@ Puppet::Face.define(:module, '1.0.0') do
       output = ''
 
       mods_tree_deps = {}
+      environment = Puppet::Node::Environment.new(options[:env])
+      mod_deps = environment.module_dependencies
       modules_by_path.each do |path, modules|
         output << "#{path}\n"
-        modules.each do |mod|
-          version_string = mod.version ? "(#{mod.version})" : '???'
-          output << "  #{mod.name} #{version_string}\n"
+        if options[:tree]
+          while !modules.empty?
+            mod = mod_with_fewest_requires(mod_deps, environment)
+            mod_deps.delete(mod.metadata['name'])
+            modules.delete(mod)
 
-          if options[:tree]
-            mod.dependencies_as_modules.each do |dep_mod|
-              dep_version_string = dep_mod.version ? "(#{dep_mod.version})" : '???'
-              path_out = File.dirname(dep_mod.path) == path ? '' : File.dirname(dep_mod.path)
-              output << "    #{dep_mod.name} #{dep_version_string} #{path_out}\n"
-
-              dep_mod.unsatisfied_dependencies.each do |unsat_dep|
-                unsat_mod, reason = unsat_dep
-                output << "    #{unsat_mod.name} unsatisfied because #{reason}\n"
-              end
-            end
+            indent_level = 0
+            tree_print(mod, modules, mod_deps, output, indent_level)
           end
         end
       end
@@ -89,5 +84,35 @@ Puppet::Face.define(:module, '1.0.0') do
       output
     end
 
+  end
+
+  def tree_print(mod, modules, mod_deps, output, indent_level)
+    indent = '  ' * indent_level
+    output << print(mod, indent)
+
+    mod.dependencies_as_modules.each do |dep_mod|
+      modules.delete(dep_mod)
+      mod_deps.delete(dep_mod.metadata['name'])
+      tree_print(dep_mod, modules, mod_deps, output, indent_level + 1)
+
+#     dep_mod.unsatisfied_dependencies.each do |unsat_dep|
+#       unsat_mod, reason = unsat_dep
+#       output << "    #{unsat_mod.name} unsatisfied because #{reason}\n"
+#     end
+    end
+  end
+
+  def print(mod, indent)
+    version_string = mod.version ? "(#{mod.version})" : '???'
+    "#{indent}#{mod.name} #{version_string}\n"
+  end
+
+  def mod_with_fewest_requires(mod_deps, environment)
+
+    fewest_require_size = mod_deps.map {|mod_name,v| v[:required_by].size}.min
+    mod_info = mod_deps.find {|mod_name, v| v[:required_by].size == fewest_require_size}
+    mod_name = mod_info.first
+    mod_name = mod_name.split('-').last
+    environment.module(mod_name)
   end
 end

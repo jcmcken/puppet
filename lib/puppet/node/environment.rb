@@ -104,7 +104,11 @@ class Puppet::Node::Environment
   # Return all modules from this environment.
   # Cache the list, because it can be expensive to create.
   cached_attr(:modules, Puppet[:filetimeout]) do
-    module_names = modulepath.collect { |path| Dir.entries(path) }.flatten.uniq
+    module_names = modulepath.collect do |path|
+      Dir.chdir(path) do
+        Dir.glob('*').select { |d| FileTest.directory? d }
+      end
+    end.flatten.uniq
     module_names.collect do |path|
       begin
         Puppet::Module.new(path, :environment => self)
@@ -127,6 +131,26 @@ class Puppet::Node::Environment
     end
     modules_by_path
   end
+
+  # build a data structure that will allows to resolve constraints
+  def module_dependencies
+    deps = {}
+    modules.each do |mod|
+      deps[mod.metadata['name']] ||= {}
+      deps[mod.metadata['name']][:versions] ||= []
+      deps[mod.metadata['name']][:versions] << mod.version
+      deps[mod.metadata['name']][:required_by] ||= []
+
+      mod.dependencies.each do |mod_dep|
+        dep_name = mod_dep['name'].gsub('/', '-')
+        deps[dep_name] ||= {}
+        deps[dep_name][:required_by] ||= []
+        deps[dep_name][:required_by] << ["#{mod.metadata['name']}@#{mod.version}", mod_dep['version_requirement']]
+      end
+    end
+    deps
+  end
+
 
   def to_s
     name.to_s
