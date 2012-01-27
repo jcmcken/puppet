@@ -17,19 +17,19 @@ describe Puppet::Module::Tool::Applications::Installer do
   #   local bong -> bar > 2.2
   #
   #   foo {
-  #     
+  #
   #   }
-  #   bar { 
+  #   bar {
   #     deps_on_me => > 2 < 3 > 2.2
-  #     versions { 
-  #       2.0 
-  #       2.5 deps => baz 
+  #     versions {
+  #       2.0
+  #       2.5 deps => baz
   #       (server not send maybe) 5.0 deps => baz
   #     }
   #   }
-  # 
+  #
   #   bing {
-  #     deps_on_me => foo 
+  #     deps_on_me => foo
   #     versions {
   #       1.0 deps => bar >2 < 3
   #     }
@@ -38,6 +38,6 @@ describe Puppet::Module::Tool::Applications::Installer do
   #   foo -> bar > 2
   #   bar 1.1 already installed
   #   baz already installed -> bar < 2
- 
+
 
 end

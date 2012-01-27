@@ -47,6 +47,8 @@ module Puppet::Module::Tool
         case @source
         when :repository
           if match['file']
+            #local = local_deps(@installed_modules)
+            #remote = remote_deps(@username, @module_name)
             dep_info = dependency_info(@username, @module_name, @match["version"])
             ([match] + dep_info).each do |mod|
               install(mod['file'])
@@ -83,20 +85,25 @@ module Puppet::Module::Tool
           deps[mod.metadata['name']] ||= {}
           deps[mod.metadata['name']][:versions] ||= []
           deps[mod.metadata['name']][:versions] << mod.version
-          deps[mod.metadata['name']][:deps_on_me] ||= []
+          deps[mod.metadata['name']][:required_by] ||= []
 
           mod.dependencies.each do |mod_dep|
             dep_name = mod_dep['name'].gsub('/', '-')
             deps[dep_name] ||= {}
-            deps[dep_name][:deps_on_me] ||= []
-            deps[dep_name][:deps_on_me] << ["#{mod.metadata['name']}@#{mod.version}", mod_dep['version_requirement']]
+            deps[dep_name][:required_by] ||= []
+            deps[dep_name][:required_by] << ["#{mod.metadata['name']}@#{mod.version}", mod_dep['version_requirement']]
           end
         end
+        deps
+      end
+
+      def remote_deps(author, mod_name)
+        url = ::URI.parse('http://localhost:3000/' + "api/v1/releases.json?module=#{author}/#{mod_name}")
+        PSON.parse(read_match(url))
       end
 
       def dependency_info(author, mod_name, version)
         url = repository.uri + "/#{author}/#{mod_name}/#{version}/json"
-        local_deps(@installed_modules)
         raw_result = read_match(url)
         mod_version_info = PSON.parse(raw_result)
         dependencies = mod_version_info['metadata']['dependencies']
@@ -106,7 +113,7 @@ module Puppet::Module::Tool
           dep_author, dep_name = dep['name'].split('/')
           version_req = dep['version_requirement']
           dep_installed = @installed_modules.find {|mod| mod.name == dep_name}
-          
+
           if dep_installed
             # if dep_installed.satisfy(version_req)
             #   next
@@ -115,7 +122,11 @@ module Puppet::Module::Tool
             # end
           else
             remote_info = get_remote_module_install_info(dep_author, dep_name, version_req)
-            require 'ruby-debug'; debugger; 1;
+
+            # now we need to find any of its deps
+            url = repository.uri + "/#{dep_author}/#{dep_name}/#{remote_info['version']}/json"
+            dep_dep_info = PSON.parse(read_match(url))
+            dependencies += dep_dep_info['metadata']['dependencies']
             dep_info << remote_info
           end
 
