@@ -44,7 +44,9 @@ class Puppet::Property::Ensure < Puppet::Property
 
   def change_to_s(currentvalue, newvalue)
     begin
-      if currentvalue == :absent or currentvalue.nil?
+      if newvalue == :purged
+        return "#{self.name} changed '#{self.is_to_s(currentvalue)}' to '#{self.should_to_s(newvalue)}'"
+      elsif currentvalue == :absent or currentvalue.nil?
         return "created"
       elsif newvalue == :absent
         return "removed"
