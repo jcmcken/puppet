@@ -162,32 +162,41 @@ class Puppet::Module
     return [] unless dependencies
 
     dependencies.each do |dependency|
-      name = dependency['name']
+      forge_name = dependency['name']
+      author, dep_name = forge_name.split('/')
       version_string = dependency['version_requirement']
 
-      equality, version = version_string ? version_string.split("\s") : [nil, nil]
+      equality, dep_version = version_string ? version_string.split("\s") : [nil, nil]
 
-      unless mod = environment.module(name)
-        unsatisfied_dependencies << [Puppet::Module.new(name, :environment => environment), 'module not found']
+      unless dep_mod = environment.module(dep_name)
+        msg =  "Missing dependency `#{dep_name}`:\n"
+        msg += "  `#{self.name}` (#{self.version}) requires `#{forge_name}` (#{version_string})\n"
+        unsatisfied_dependencies << msg
         next
       end
 
-      if version && !mod.version
-        unsatisfied_dependencies << [mod, "dependency doesn't have a version"]
+      if dep_version && !dep_mod.version
+        msg =  "Unversioned dependency `#{dep_mod.name}`:\n"
+        msg += "  `#{self.name}` (#{self.version}) requires `#{forge_name}` (#{version_string})\n"
+        unsatisfied_dependencies << msg
         next
       end
 
-      if version
+      if dep_version
         begin
-          required_version_semver = SemVer.new(version)
-          actual_version_semver = SemVer.new(mod.version)
+          required_version_semver = SemVer.new(dep_version)
+          actual_version_semver = SemVer.new(dep_mod.version)
         rescue ArgumentError
-          unsatisfied_dependencies << [mod, "version not specified as a semantic version"]
+          msg =  "Non semantic version dependency `#{dep_mod.name}` (#{dep_mod.version}):\n"
+          msg += "  `#{self.name}` (#{self.version}) requires `#{forge_name}` (#{version_string})\n"
+          unsatisfied_dependencies << msg
           next
         end
 
         if !actual_version_semver.send(equality, required_version_semver)
-          unsatisfied_dependencies << [mod, "version mismatch"]
+          msg =  "Version dependency mismatch `#{dep_mod.name}` (#{dep_mod.version}):\n"
+          msg += "  `#{self.name}` (#{self.version}) requires `#{forge_name}` (#{version_string})\n"
+          unsatisfied_dependencies << msg
           next
         end
       end
@@ -218,7 +227,7 @@ class Puppet::Module
   end
 
   def assert_validity
-    raise InvalidName, "Invalid module name; module names must be alphanumeric (plus '-'), not '#{name}'" unless name =~ /^[-\w]+$/
+    raise InvalidName, "Invalid module name #{name}; module names must be alphanumeric (plus '-'), not '#{name}'" unless name =~ /^[-\w]+$/
   end
 
   def ==(other)
