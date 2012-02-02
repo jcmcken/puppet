@@ -314,7 +314,9 @@ class Application
   end
 
   def run_command
-    main
+    Puppet.debug('running command') do
+      main
+    end
   end
 
   def setup

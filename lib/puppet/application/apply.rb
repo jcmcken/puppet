@@ -172,73 +172,85 @@ Copyright (c) 2011 Puppet Labs, LLC Licensed under the Apache 2.0 License
   end
 
   def main
-    # Set our code or file to use.
-    if options[:code] or command_line.args.length == 0
-      Puppet[:code] = options[:code] || STDIN.read
-    else
-      manifest = command_line.args.shift
-      raise "Could not find file #{manifest}" unless ::File.exist?(manifest)
-      Puppet.warning("Only one file can be applied per run.  Skipping #{command_line.args.join(', ')}") if command_line.args.size > 0
-      Puppet[:manifest] = manifest
-    end
-
-    # Collect our facts.
-    unless facts = Puppet::Node::Facts.indirection.find(Puppet[:node_name_value])
-      raise "Could not find facts for #{Puppet[:node_name_value]}"
-    end
-
-    unless Puppet[:node_name_fact].empty?
-      Puppet[:node_name_value] = facts.values[Puppet[:node_name_fact]]
-      facts.name = Puppet[:node_name_value]
-    end
-
-    # Find our Node
-    unless node = Puppet::Node.indirection.find(Puppet[:node_name_value])
-      raise "Could not find node #{Puppet[:node_name_value]}"
-    end
-
-    # Merge in the facts.
-    node.merge(facts.values)
-
-    # Allow users to load the classes that puppet agent creates.
-    if options[:loadclasses]
-      file = Puppet[:classfile]
-      if FileTest.exists?(file)
-        unless FileTest.readable?(file)
-          $stderr.puts "#{file} is not readable"
-          exit(63)
+    Puppet.debug('main') do
+      Puppet.debug("Set our code or file to use") do
+        if options[:code] or command_line.args.length == 0
+          Puppet[:code] = options[:code] || STDIN.read
+        else
+          manifest = command_line.args.shift
+          raise "Could not find file #{manifest}" unless ::File.exist?(manifest)
+          Puppet.warning("Only one file can be applied per run.  Skipping #{command_line.args.join(', ')}") if command_line.args.size > 0
+          Puppet[:manifest] = manifest
         end
-        node.classes = ::File.read(file).split(/[\s\n]+/)
       end
-    end
 
-    begin
-      # Compile our catalog
-      starttime = Time.now
-      catalog = Puppet::Resource::Catalog.indirection.find(node.name, :use_node => node)
+      facts = nil
+      Puppet.debug('collecting facts') do
+        facts = Puppet::Node::Facts.indirection.find(Puppet[:node_name_value])
+        unless facts
+          raise "Could not find facts for #{Puppet[:node_name_value]}"
+        end
 
-      # Translate it to a RAL catalog
-      catalog = catalog.to_ral
+        unless Puppet[:node_name_fact].empty?
+          Puppet[:node_name_value] = facts.values[Puppet[:node_name_fact]]
+          facts.name = Puppet[:node_name_value]
+        end
+      end
 
-      catalog.finalize
+      node = nil
+      Puppet.debug('Find our Node') do
+        unless node = Puppet::Node.indirection.find(Puppet[:node_name_value])
+          raise "Could not find node #{Puppet[:node_name_value]}"
+        end
 
-      catalog.retrieval_duration = Time.now - starttime
+        # Merge in the facts.
+        node.merge(facts.values)
 
-      require 'puppet/configurer'
-      configurer = Puppet::Configurer.new
-      report = configurer.run(:skip_plugin_download => true, :catalog => catalog)
+        # Allow users to load the classes that puppet agent creates.
+        if options[:loadclasses]
+          file = Puppet[:classfile]
+          if FileTest.exists?(file)
+            unless FileTest.readable?(file)
+              $stderr.puts "#{file} is not readable"
+              exit(63)
+            end
+            node.classes = ::File.read(file).split(/[\s\n]+/)
+          end
+        end
+      end
 
-      if not report
+      begin
+        catalog = nil
+        Puppet.debug('compile catalog') do
+          starttime = Time.now
+          catalog = Puppet::Resource::Catalog.indirection.find(node.name, :use_node => node)
+
+          # Translate it to a RAL catalog
+          catalog = catalog.to_ral
+
+          catalog.finalize
+
+          catalog.retrieval_duration = Time.now - starttime
+        end
+
+        Puppet.debug('running the configurer') do
+          require 'puppet/configurer'
+          configurer = Puppet::Configurer.new
+          report = configurer.run(:skip_plugin_download => true, :catalog => catalog)
+
+          if not report
+            exit(1)
+          elsif options[:detailed_exitcodes] then
+            exit(report.exit_status)
+          else
+            exit(0)
+          end
+        end
+      rescue => detail
+        puts detail.backtrace if Puppet[:trace]
+        $stderr.puts detail.message
         exit(1)
-      elsif options[:detailed_exitcodes] then
-        exit(report.exit_status)
-      else
-        exit(0)
       end
-    rescue => detail
-      puts detail.backtrace if Puppet[:trace]
-      $stderr.puts detail.message
-      exit(1)
     end
   end
 
