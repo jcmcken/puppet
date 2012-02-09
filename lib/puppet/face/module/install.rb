@@ -4,7 +4,7 @@ Puppet::Face.define(:module, '1.0.0') do
     description <<-EOT
       Install a module from a release archive file on-disk or by downloading
       one from a repository. Unpack the archive into the install directory
-      specified by the --install-dir option, which defaults to
+      specified by the --dir option, which defaults to
       #{Puppet.settings[:modulepath].split(File::PATH_SEPARATOR).first}
     EOT
 
@@ -15,25 +15,25 @@ Puppet::Face.define(:module, '1.0.0') do
 
       $ puppet module install puppetlabs/vcsrepo
       notice: Installing puppetlabs-vcsrepo-0.0.4.tar.gz to /etc/puppet/modules/vcsrepo
-      /etc/puppet/modules/vcsrepo
 
       Install a specific module version from a repository:
 
       $ puppet module install puppetlabs/vcsrepo -v 0.0.4
       notice: Installing puppetlabs-vcsrepo-0.0.4.tar.gz to /etc/puppet/modules/vcsrepo
-      /etc/puppet/modules/vcsrepo
 
       Install a module into a specific directory:
 
-      $ puppet module install puppetlabs/vcsrepo --install-dir=/usr/share/puppet/modules
+      $ puppet module install puppetlabs/vcsrepo --dir=/usr/share/puppet/modules
       notice: Installing puppetlabs-vcsrepo-0.0.4.tar.gz to /usr/share/puppet/modules/vcsrepo
-      /usr/share/puppet/modules/vcsrepo
 
+      Install a module into a specific directory and check for dependencies in other directories:
+
+      $ puppet module install puppetlabs/vcsrepo --dir=/usr/share/puppet/modules --modulepath /etc/puppet/modules
+      notice: Installing puppetlabs-vcsrepo-0.0.4.tar.gz to /usr/share/puppet/modules/vcsrepo
       Install a module from a release archive:
 
       $ puppet module install puppetlabs-vcsrepo-0.0.4.tar.gz
       notice: Installing puppetlabs-vcsrepo-0.0.4.tar.gz to /etc/puppet/modules/vcsrepo
-      /etc/puppet/modules/vcsrepo
     EOT
 
     arguments "<name>"
@@ -45,12 +45,14 @@ Puppet::Face.define(:module, '1.0.0') do
       EOT
     end
 
-    option "--install-dir=", "-i=" do
+    option "--dir=", "-i=" do
       default_to { Puppet.settings[:modulepath].split(File::PATH_SEPARATOR).first }
       summary "The directory into which modules are installed."
       description <<-EOT
         The directory into which modules are installed, defaults to the first
-        directory in the modulepath.
+        directory in the modulepath.  Setting just the dir option sets the modulepath
+        as well.  If you want install to check for dependencies in other paths,
+        also give the modulepath option.
       EOT
     end
 
@@ -59,6 +61,22 @@ Puppet::Face.define(:module, '1.0.0') do
       summary "Module repository to use."
       description <<-EOT
         Module repository to use.
+      EOT
+    end
+
+    option "--ignore-dependencies" do
+      summary "Do not attempt to install dependencies"
+      description <<-EOT
+        Do not attempt to install dependencies
+      EOT
+    end
+
+    option "--modulepath MODULEPATH" do
+      summary "Which directories to look for modules in"
+      description <<-EOT
+        The directory into which modules are installed, defaults to the first
+        directory in the modulepath.  If the dir option is also given, it is prepended
+        to the modulepath.
       EOT
     end
 
@@ -71,13 +89,23 @@ Puppet::Face.define(:module, '1.0.0') do
     end
 
     when_invoked do |name, options|
+      if options[:dir]
+        if options[:modulepath]
+          sep = File::PATH_SEPARATOR
+          Puppet.settings[:modulepath] = "#{options[:dir]}#{sep}#{options[:modulepath]}"
+        else
+          Puppet.settings[:modulepath] = options[:dir]
+        end
+      elsif options[:modulepath]
+        Puppet.settings[:modulepath] = options[:modulepath]
+      end
+
+      Puppet.settings[:module_repository] = options[:module_repository] if options[:module_repository]
       Puppet::Module::Tool::Applications::Installer.run(name, options)
     end
 
     when_rendering :console do |return_value|
-      # Get the string representation of the Pathname object and print it to
-      # the console.
-      return_value.to_s
+      ''
     end
   end
 end

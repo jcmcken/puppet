@@ -6,11 +6,7 @@ require 'puppet/forge/cache'
 require 'puppet/forge/repository'
 
 module Puppet::Forge
-  class Forge
-    def initialize(url=Puppet.settings[:module_repository])
-      @uri = URI.parse(url)
-    end
-
+  module Forge
     # Return a list of module metadata hashes that match the search query.
     # This return value is used by the module_tool face install search,
     # and displayed to on the console.
@@ -30,7 +26,7 @@ module Puppet::Forge
     #   }
     # ]
     #
-    def search(term)
+    def self.search(term)
       request = Net::HTTP::Get.new("/modules.json?q=#{URI.escape(term)}")
       response = repository.make_http_request(request)
 
@@ -45,70 +41,38 @@ module Puppet::Forge
       matches
     end
 
-    # Return a Pathname object representing the path to the module
-    # release package in the `Puppet.settings[:module_working_dir]`.
-    def get_release_package(params)
-      cache_path = nil
-      case params[:source]
-      when :repository
-        if not (params[:author] && params[:modname])
-          raise ArgumentError, ":author and :modename required"
-        end
-        cache_path = get_release_package_from_repository(params[:author], params[:modname], params[:version])
-      when :filesystem
-        if not params[:filename]
-          raise ArgumentError, ":filename required"
-        end
-        cache_path = get_release_package_from_filesystem(params[:filename])
-      else
-        raise ArgumentError, "Could not determine installation source"
-      end
-
-      cache_path
-    end
-
-    def get_releases(author, modname)
-      request_string = "/#{author}/#{modname}"
-
+    def self.remote_dependency_info(author, mod_name, version)
+      version_string = version ? "&version=#{version}" : ''
+      request = Net::HTTP::Get.new("/api/v1/releases.json?module=#{author}/#{mod_name}" + version_string)
       begin
-        response = repository.make_http_request(request_string)
+        response = repository.make_http_request(request)
       rescue => e
-        raise ArgumentError, "Could not find a release for this module (#{e.message})"
+        raise ArgumentError, "Could not find release information for this module (#{e.message})"
       end
-
-      results = PSON.parse(response.body)
-      # At this point releases look like this:
-      # [{"version" => "0.0.1"}, {"version" => "0.0.2"},{"version" => "0.0.3"}]
-      #
-      # Lets fix this up a bit and return something like this to the caller
-      # ["0.0.1", "0.0.2", "0.0.3"]
-      results["releases"].collect {|release| release["version"]}
+      PSON.parse(response.body)
     end
 
-    private
-
-    # Locate and download a module release package from the remote forge
-    # repository into the `Puppet.settings[:module_working_dir]`. Do not
-    # unpack it, just return the location of the package on disk.
-    def get_release_package_from_repository(author, modname, version=nil)
-      release = get_release(author, modname, version)
-      if release['file']
-        begin
-          cache_path = repository.retrieve(release['file'])
-        rescue OpenURI::HTTPError => e
-          raise RuntimeError, "Could not download module: #{e.message}"
+    def self.get_release_packages_from_repository(install_list)
+      install_list.map do |release|
+        modname, version, file = release
+        cache_path = nil
+        if file
+          begin
+            cache_path = repository.retrieve(file)
+          rescue OpenURI::HTTPError => e
+            raise RuntimeError, "Could not download module: #{e.message}"
+          end
+        else
+          raise RuntimeError, "Malformed response from module repository."
         end
-      else
-        raise RuntimeError, "Malformed response from module repository."
+        cache_path
       end
-
-      cache_path
     end
 
     # Locate a module release package on the local filesystem and move it
     # into the `Puppet.settings[:module_working_dir]`. Do not unpack it, just
     # return the location of the package on disk.
-    def get_release_package_from_filesystem(filename)
+    def self.get_release_package_from_filesystem(filename)
       if File.exist?(File.expand_path(filename))
         repository = Repository.new('file:///')
         uri = URI.parse("file://#{URI.escape(File.expand_path(filename))}")
@@ -120,33 +84,8 @@ module Puppet::Forge
       cache_path
     end
 
-    def repository
-      @repository ||= Puppet::Forge::Repository.new(@uri)
-    end
-
-    # Connect to the remote repository and locate a specific module release
-    # by author/name combination. If a version requirement is specified, search
-    # for that exact version, or grab the latest release available.
-    #
-    # Return the following response to the caller:
-    #
-    # {"file"=>"/system/releases/p/puppetlabs/puppetlabs-apache-0.0.3.tar.gz", "version"=>"0.0.3"}
-    #
-    #
-    def get_release(author, modname, version_requirement=nil)
-      request_string = "/users/#{author}/modules/#{modname}/releases/find.json"
-      if version_requirement
-        request_string + "?version=#{URI.escape(version_requirement)}"
-      end
-      request = Net::HTTP::Get.new(request_string)
-
-      begin
-        response = repository.make_http_request(request)
-      rescue => e
-        raise  ArgumentError, "Could not find a release for this module (#{e.message})"
-      end
-
-      PSON.parse(response.body)
+    def self.repository
+      @repository ||= Puppet::Forge::Repository.new
     end
   end
 end
