@@ -93,6 +93,11 @@ class Puppet::Node::Environment
     mod
   end
 
+  def module_by_forge_name(forge_name)
+    author, modname = forge_name.split('/')
+    self.module(modname)
+  end
+
   # Cache the modulepath, so that we aren't searching through
   # all known directories all the time.
   cached_attr(:modulepath, Puppet[:filetimeout]) do
@@ -126,6 +131,19 @@ class Puppet::Node::Environment
       end
     end
     modules_by_path
+  end
+
+  def module_requirements
+    deps = {}
+    modules.each do |mod|
+      next unless mod.forge_name
+      deps[mod.forge_name] ||= []
+      mod.dependencies and mod.dependencies.sort_by {|mod_dep| mod_dep['name']}.each do |mod_dep|
+        deps[mod_dep['name']] ||= []
+        deps[mod_dep['name']] << [mod.forge_name, mod_dep['version_requirement']]
+      end
+    end
+    deps
   end
 
   def to_s
