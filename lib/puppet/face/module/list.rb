@@ -18,6 +18,10 @@ Puppet::Face.define(:module, '1.0.0') do
       summary "Which directories to look for modules in"
     end
 
+    option "--tree" do
+      summary "Whether to show dependencies as a tree view"
+    end
+
     examples <<-EOT
       List installed modules:
 
@@ -70,15 +74,49 @@ Puppet::Face.define(:module, '1.0.0') do
 
       output << "\n" if dependency_errors
 
-      modules_by_path.each do |path, modules|
-        output << "#{path}\n"
-        modules.sort_by {|mod| mod.name }.each do |mod|
-          version_string = mod.version ? "(#{mod.version})" : ''
-          output << "  #{mod.name} #{version_string}\n"
+      environment.modulepath.each do |path|
+        modules = modules_by_path[path]
+        no_mods = modules.empty? ? ' (No modules installed)' : ''
+        output << "#{path}#{no_mods}\n"
+        if options[:tree]
+          # The modules with fewest things depending on them will be the
+          # parent of the tree.  Can't assume to start with 0 dependencies since
+          # dependencies may be cyclical
+          modules_by_num_requires = modules.sort_by {|m| m.required_by.size}
+
+          while !modules_by_num_requires.empty?
+            mod = modules_by_num_requires.shift
+
+            tree_print(mod, modules_by_num_requires, [], output)
+          end
+        else
+          modules.sort_by {|mod| mod.name }.each do |mod|
+            output << print(mod)
+          end
         end
       end
+
       output
     end
 
+  end
+
+  def tree_print(mod, modules_left_to_print, ancestors, output)
+    output << print(mod, ancestors.size)
+    return if ancestors.include? mod
+
+    mod.dependencies_as_modules.each do |dep_mod|
+      modules_left_to_print.delete(dep_mod)
+
+      tree_print(dep_mod, modules_left_to_print, ancestors.dup << mod, output)
+    end
+  end
+
+  def print(mod, indent_level = 0)
+    indent = '  ' * indent_level
+    version_string = mod.version ? "(#{mod.version})" : '(???)'
+    unmet_dependency = mod.unmet_dependencies.empty? ? '' : 'UNMET DEPENDENCY '
+    display_name = mod.forge_name ? mod.forge_name.gsub('/', '-') : mod.name
+    "#{indent}#{unmet_dependency}#{display_name} #{version_string}\n"
   end
 end

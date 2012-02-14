@@ -2,6 +2,8 @@ require 'puppet/face'
 require 'puppet/module_tool'
 
 Puppet::Face.define(:module, '1.0.0') do
+  extend Puppet::Util::Colors
+
   copyright "Puppet Labs", 2011
   license   "Apache 2 license; see COPYING"
 
